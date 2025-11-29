@@ -33,8 +33,8 @@ export const SlotGame = () => {
   const [lastSpinWin, setLastSpinWin] = useState(0);
   const [grid, setGrid] = useState<Cell[][]>([]);
 
-  const ROWS = 5;
-  const COLS = 6;
+  const ROWS = 4;
+  const COLS = 5;
 
   useEffect(() => {
     initializeGrid();
@@ -252,7 +252,7 @@ export const SlotGame = () => {
         />
 
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <div className="flex-1 flex flex-col items-center justify-center p-4 pb-32">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
