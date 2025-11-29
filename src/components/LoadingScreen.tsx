@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import loadingBg from "@/assets/loading-bg.png";
 import loadingCharacter from "@/assets/loading-character.png";
-import loadingGlow from "@/assets/loading-glow.png";
-import loadingText from "@/assets/loading-text.png";
-import loadingBarBottom from "@/assets/loading-bar-bottom.png";
-import loadingBarFill from "@/assets/loading-bar-fill.png";
-import loadingBarTop from "@/assets/loading-bar-top.png";
-import loadingLogo from "@/assets/loading-logo.png";
+import loadingGlow from "@/assets/loading-glow-new.png";
+import loadingText from "@/assets/loading-text-new.png";
+import loadingBarBottom from "@/assets/loading-bar-bottom-new.png";
+import loadingBarFill from "@/assets/loading-bar-fill-new.png";
+import loadingBarTop from "@/assets/loading-bar-top-new.png";
+import loadingLogo from "@/assets/loading-logo-new.png";
 
 interface LoadingScreenProps {
   onLoadingComplete: () => void;
