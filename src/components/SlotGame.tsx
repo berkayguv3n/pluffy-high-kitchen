@@ -217,41 +217,39 @@ export const SlotGame = () => {
   };
 
   const handleCascade = async (currentGrid: Cell[][]) => {
-    // SADECE kazanan sembolleri SİL, yeni sembolleri üstten ekle
-    const newGrid = currentGrid.map(row => [...row]);
+    // Grid'in bir kopyasını al - ASLA yeni grid oluşturma!
+    const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
 
     // Her kolonda işlem yap
     for (let col = 0; col < COLS; col++) {
-      const columnCells: Cell[] = [];
+      const nonWinningSymbols: Symbol[] = [];
       
-      // SADECE kazanmayan hücreleri topla (alta doğru) - ID'LERİNİ KORU!
-      for (let row = 0; row < ROWS; row++) {
+      // Bu kolondaki kazanmayan sembolleri topla
+      for (let row = ROWS - 1; row >= 0; row--) {
         if (!newGrid[row][col].isWinning) {
-          columnCells.push({ ...newGrid[row][col], isWinning: false });
+          nonWinningSymbols.push(newGrid[row][col].symbol);
         }
       }
       
-      // Kaç tane sembol kaybettik?
-      const missingCount = ROWS - columnCells.length;
+      // Kaç yeni sembol lazım?
+      const newSymbolsNeeded = ROWS - nonWinningSymbols.length;
       
-      // Yukarıdan YENİ rastgele semboller ekle
-      for (let i = 0; i < missingCount; i++) {
-        columnCells.unshift({
-          symbol: generateRandomSymbol(freeSpins > 0),
-          isWinning: false,
-          id: `new-${i}-${col}-${Date.now()}-${Math.random()}`,
-        });
+      // Yeni sembolleri üret
+      for (let i = 0; i < newSymbolsNeeded; i++) {
+        nonWinningSymbols.push(generateRandomSymbol(freeSpins > 0));
       }
       
-      // Kolonu güncelle - MEVCUT hücrelerin ID'lerini KORUYORUZ
-      for (let row = 0; row < ROWS; row++) {
-        newGrid[row][col] = columnCells[row];
+      // Kolonu ALTTAN YUKARIYA doldur - grid pozisyonları değişmez!
+      for (let row = ROWS - 1; row >= 0; row--) {
+        newGrid[row][col].symbol = nonWinningSymbols[ROWS - 1 - row];
+        newGrid[row][col].isWinning = false;
+        // ID'yi KORUYORUZ - React re-render etmesin
       }
     }
 
     setGrid(newGrid);
 
-    // Yeni kazanç kontrolü (symbollerin düşmesi için kısa bekleme)
+    // Yeni kazanç kontrolü
     setTimeout(() => {
       checkWins(newGrid);
     }, 400);
