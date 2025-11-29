@@ -224,7 +224,7 @@ export const SlotGame = () => {
     for (let col = 0; col < COLS; col++) {
       const columnCells: Cell[] = [];
       
-      // SADECE kazanmayan hücreleri topla (alta doğru)
+      // SADECE kazanmayan hücreleri topla (alta doğru) - ID'LERİNİ KORU!
       for (let row = 0; row < ROWS; row++) {
         if (!newGrid[row][col].isWinning) {
           columnCells.push({ ...newGrid[row][col], isWinning: false });
@@ -243,12 +243,9 @@ export const SlotGame = () => {
         });
       }
       
-      // Kolonu güncelle
+      // Kolonu güncelle - MEVCUT hücrelerin ID'lerini KORUYORUZ
       for (let row = 0; row < ROWS; row++) {
-        newGrid[row][col] = {
-          ...columnCells[row],
-          id: `${row}-${col}-${Date.now()}-${Math.random()}`,
-        };
+        newGrid[row][col] = columnCells[row];
       }
     }
 
