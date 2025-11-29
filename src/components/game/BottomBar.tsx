@@ -1,6 +1,18 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Settings, Info, Volume2, Plus, Minus } from "lucide-react";
+import { GameButton } from "@/components/ui/GameButton";
+import btnSpinNormal from "@/assets/btn-spin-normal.png";
+import btnSpinHover from "@/assets/btn-spin-hover.png";
+import btnSpinPressed from "@/assets/btn-spin-pressed.png";
+import btnSquareNormal from "@/assets/btn-square-normal.png";
+import btnSquareHover from "@/assets/btn-square-hover.png";
+import btnSquarePressed from "@/assets/btn-square-pressed.png";
+import btnRectNormal from "@/assets/btn-rect-normal.png";
+import btnRectHover from "@/assets/btn-rect-hover.png";
+import btnRectPressed from "@/assets/btn-rect-pressed.png";
+import btnIconInfo from "@/assets/btn-icon-info.png";
+import btnIconSettings from "@/assets/btn-icon-settings.png";
+import btnTextAuto from "@/assets/btn-text-auto.png";
+import btnTextMaxBet from "@/assets/btn-text-maxbet.png";
 
 interface BottomBarProps {
   balance: number;
@@ -15,15 +27,20 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
     <div className="fixed bottom-0 left-0 right-0 h-24 gradient-button flex items-center justify-between px-6 z-20 border-t-4 border-[#FFD700] shadow-card">
       {/* Left controls */}
       <div className="flex items-center gap-3">
-        <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 rounded-full">
-          <Settings className="h-6 w-6" />
-        </Button>
-        <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 rounded-full">
-          <Volume2 className="h-6 w-6" />
-        </Button>
-        <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 rounded-full">
-          <Info className="h-6 w-6" />
-        </Button>
+        <GameButton
+          backgroundNormal={btnSquareNormal}
+          backgroundHover={btnSquareHover}
+          backgroundPressed={btnSquarePressed}
+          iconImage={btnIconSettings}
+          className="w-16 h-16"
+        />
+        <GameButton
+          backgroundNormal={btnSquareNormal}
+          backgroundHover={btnSquareHover}
+          backgroundPressed={btnSquarePressed}
+          iconImage={btnIconInfo}
+          className="w-16 h-16"
+        />
       </div>
 
       {/* Center info */}
@@ -61,54 +78,34 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
             </motion.div>
           </motion.div>
         )}
-        
-        <div className="text-center px-6">
-          <div className="text-base font-bold text-glow">HOLD SPACE FOR TURBO SPIN</div>
-        </div>
       </div>
 
       {/* Right controls */}
       <div className="flex items-center gap-4">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-white hover:bg-white/20 rounded-full h-12 w-12 text-2xl"
-        >
-          <Minus className="h-6 w-6" />
-        </Button>
+        <GameButton
+          backgroundNormal={btnRectNormal}
+          backgroundHover={btnRectHover}
+          backgroundPressed={btnRectPressed}
+          textImage={btnTextMaxBet}
+          className="w-32 h-14"
+        />
         
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <GameButton
+          backgroundNormal={btnSpinNormal}
+          backgroundHover={btnSpinHover}
+          backgroundPressed={btnSpinPressed}
           onClick={onSpin}
           disabled={isSpinning}
-          className="relative"
-        >
-          <div className="w-20 h-20 rounded-full bg-gradient-to-b from-white to-gray-200 flex items-center justify-center shadow-button border-4 border-white">
-            <motion.div
-              animate={isSpinning ? { rotate: 360 } : {}}
-              transition={{ duration: 1, repeat: isSpinning ? Infinity : 0, ease: "linear" }}
-              className="text-4xl"
-            >
-              🎰
-            </motion.div>
-          </div>
-        </motion.button>
+          className="w-24 h-24"
+        />
 
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-white hover:bg-white/20 rounded-full h-12 w-12 text-2xl"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          className="text-white hover:bg-white/20 font-bold text-sm"
-        >
-          AUTOPLAY
-        </Button>
+        <GameButton
+          backgroundNormal={btnRectNormal}
+          backgroundHover={btnRectHover}
+          backgroundPressed={btnRectPressed}
+          textImage={btnTextAuto}
+          className="w-32 h-14"
+        />
       </div>
     </div>
   );

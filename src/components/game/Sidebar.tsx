@@ -1,6 +1,10 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Plus, Minus } from "lucide-react";
+import { GameButton } from "@/components/ui/GameButton";
+import btnRectNormal from "@/assets/btn-rect-normal.png";
+import btnRectHover from "@/assets/btn-rect-hover.png";
+import btnRectPressed from "@/assets/btn-rect-pressed.png";
+import btnTextBuyBonus from "@/assets/btn-text-buybonus.png";
+import btnTextFreeSpins from "@/assets/btn-text-freespins.png";
 
 interface SidebarProps {
   balance: number;
@@ -11,23 +15,23 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ balance, bet, setBet, freeSpins, freeSpinMultiplier }: SidebarProps) => {
-  const adjustBet = (amount: number) => {
-    const newBet = Math.max(0.5, Math.min(100, bet + amount));
-    setBet(newBet);
-  };
-
   return (
     <div className="w-52 p-3 flex flex-col gap-3">
-      {/* Buy Free Spins Button */}
+      {/* Buy Bonus Button */}
       <motion.div
         whileHover={{ scale: 1.02 }}
         className="gradient-sidebar rounded-2xl p-4 border-4 border-[#FFD700] shadow-card relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-        <div className="relative text-center">
-          <div className="text-white text-xs font-bold mb-1 text-glow">BUY</div>
-          <div className="text-white text-lg font-bold mb-1 text-glow">FREE SPINS</div>
-          <div className="text-white text-2xl font-bold text-glow">$200.00</div>
+        <div className="relative">
+          <GameButton
+            backgroundNormal={btnRectNormal}
+            backgroundHover={btnRectHover}
+            backgroundPressed={btnRectPressed}
+            textImage={btnTextBuyBonus}
+            className="w-full h-16 mb-2"
+          />
+          <div className="text-white text-2xl font-bold text-center text-glow">$200.00</div>
         </div>
       </motion.div>
 
@@ -37,15 +41,20 @@ export const Sidebar = ({ balance, bet, setBet, freeSpins, freeSpinMultiplier }:
         className="gradient-sidebar rounded-2xl p-4 border-4 border-[#FFD700] shadow-card relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-        <div className="relative text-center">
-          <div className="text-white text-xs font-bold mb-1 text-glow">BUY</div>
-          <div className="text-white text-base font-bold mb-1 text-glow">SUPER</div>
-          <div className="text-white text-base font-bold mb-1 text-glow">FREE SPINS</div>
-          <div className="text-white text-2xl font-bold text-glow">$1,000.00</div>
+        <div className="relative">
+          <div className="text-white text-xs font-bold mb-2 text-center text-glow">SUPER</div>
+          <GameButton
+            backgroundNormal={btnRectNormal}
+            backgroundHover={btnRectHover}
+            backgroundPressed={btnRectPressed}
+            textImage={btnTextFreeSpins}
+            className="w-full h-16 mb-2"
+          />
+          <div className="text-white text-2xl font-bold text-center text-glow">$1,000.00</div>
         </div>
       </motion.div>
 
-      {/* Bet Control */}
+      {/* Bet Display */}
       <motion.div
         whileHover={{ scale: 1.02 }}
         className="gradient-sidebar rounded-2xl p-4 border-4 border-[#FFD700] shadow-card relative overflow-hidden"
@@ -56,29 +65,33 @@ export const Sidebar = ({ balance, bet, setBet, freeSpins, freeSpinMultiplier }:
           <div className="text-white text-3xl font-bold mb-2 text-center text-glow">
             ${bet.toFixed(2)}
           </div>
-          <div className="text-white text-xs font-bold mb-2 text-center text-glow">
+          <div className="text-white text-xs font-bold text-center text-glow">
             DOUBLE YOUR CHANCE
             <br />
             TO ENTER FEATURE
           </div>
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl"
-            >
-              ➡️ OFF
-            </Button>
-          </div>
         </div>
       </motion.div>
 
-      {/* Big Spin Button Display */}
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        className="bg-primary rounded-2xl p-8 border-4 border-primary shadow-card aspect-square flex items-center justify-center"
-      >
-        <div className="text-white text-6xl">🎰</div>
-      </motion.div>
+      {/* Free Spins Indicator */}
+      {freeSpins > 0 && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="gradient-sidebar rounded-2xl p-4 border-4 border-[#FFD700] shadow-card relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+          <div className="relative text-center">
+            <div className="text-white text-sm font-bold mb-2 text-glow">FREE SPINS</div>
+            <div className="text-white text-5xl font-bold text-glow">{freeSpins}</div>
+            {freeSpinMultiplier > 1 && (
+              <div className="text-accent text-2xl font-bold mt-2 text-glow">
+                x{freeSpinMultiplier}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
