@@ -9,10 +9,10 @@ interface GameBoardProps {
 
 export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
   return (
-    <div className="relative scale-90">
+    <div className="relative">
       {/* Board frame - golden rounded rectangle */}
       <div 
-        className="absolute -inset-4 rounded-3xl pointer-events-none z-10" 
+        className="absolute -inset-4 rounded-3xl pointer-events-none z-10"
         style={{
           background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
           padding: "6px",

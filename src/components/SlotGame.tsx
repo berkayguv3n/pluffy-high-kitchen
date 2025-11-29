@@ -240,29 +240,27 @@ export const SlotGame = () => {
          }}>
       <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
-      <div className="relative z-10 flex h-screen items-center justify-center">
+      <div className="relative z-10 flex h-screen">
         {/* Left Sidebar */}
-        <div className="absolute left-0 top-0 bottom-0">
-          <Sidebar
-            balance={balance}
-            bet={bet}
-            setBet={setBet}
-            freeSpins={freeSpins}
-            freeSpinMultiplier={freeSpinMultiplier}
-          />
-        </div>
+        <Sidebar
+          balance={balance}
+          bet={bet}
+          setBet={setBet}
+          freeSpins={freeSpins}
+          freeSpinMultiplier={freeSpinMultiplier}
+        />
 
-        {/* Main Game Area - Centered */}
-        <div className="flex flex-col items-center justify-center scale-75 lg:scale-85">
+        {/* Main Game Area */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 py-8 pb-40">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
+            className="mb-8"
           >
             <img 
               src={loadingLogo} 
               alt="Pluffy High Kitchen"
-              className="h-16 w-auto drop-shadow-2xl"
+              className="h-24 md:h-28 w-auto drop-shadow-2xl"
               style={{
                 filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(100,255,100,0.6))"
               }}
