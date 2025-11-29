@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { GameButton } from "@/components/ui/GameButton";
+import { useState } from "react";
+import { InfoModal } from "./InfoModal";
 import btnSpinNormal from "@/assets/btn-spin-normal.png";
 import btnSpinHover from "@/assets/btn-spin-hover.png";
 import btnSpinPressed from "@/assets/btn-spin-pressed.png";
@@ -23,6 +25,8 @@ interface BottomBarProps {
 }
 
 export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: BottomBarProps) => {
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
   return (
     <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/60 via-black/40 to-transparent backdrop-blur-sm z-20">
       <div className="h-full flex items-center justify-between px-8">
@@ -40,9 +44,12 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
             backgroundHover={btnSquareHover}
             backgroundPressed={btnSquarePressed}
             iconImage={btnIconInfo}
+            onClick={() => setShowInfoModal(true)}
             className="w-20 h-20"
           />
         </div>
+
+        <InfoModal open={showInfoModal} onOpenChange={setShowInfoModal} />
 
         {/* Center info - fixed width to prevent shifting */}
         <div className="flex items-center gap-12 text-white min-w-[600px] justify-center">
