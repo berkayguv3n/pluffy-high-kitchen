@@ -21,7 +21,7 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
               animate={{ 
                 y: 0, 
                 opacity: cell.isWinning ? 0 : 1,
-                scale: cell.isWinning ? [1, 1.08, 0.95, 0] : 1,
+                scale: cell.isWinning ? [1, 1.05, 0.98, 0] : 1,
               }}
               transition={{
                 y: {
@@ -30,12 +30,13 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
                   ease: [0.15, 0.85, 0.35, 1],
                 },
                 opacity: {
-                  duration: cell.isWinning ? 0.15 : (isSpinning ? 0.25 : 0),
+                  duration: cell.isWinning ? 0.4 : (isSpinning ? 0.25 : 0),
+                  ease: "easeInOut",
                 },
                 scale: {
-                  duration: cell.isWinning ? 0.18 : (isSpinning ? 0.4 : 0),
-                  times: cell.isWinning ? [0, 0.3, 0.7, 1] : undefined,
-                  ease: "easeOut",
+                  duration: cell.isWinning ? 0.5 : (isSpinning ? 0.4 : 0),
+                  times: cell.isWinning ? [0, 0.25, 0.6, 1] : undefined,
+                  ease: "easeInOut",
                 }
               }}
               className="w-24 h-24 rounded-xl"

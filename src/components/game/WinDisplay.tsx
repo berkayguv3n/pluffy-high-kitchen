@@ -7,12 +7,12 @@ interface WinDisplayProps {
 }
 
 export const WinDisplay = ({ currentWin, onDismiss }: WinDisplayProps) => {
-  // Auto dismiss after 2 seconds
+  // Auto dismiss after 3 seconds
   useEffect(() => {
     if (currentWin > 0) {
       const timer = setTimeout(() => {
         onDismiss();
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [currentWin, onDismiss]);
