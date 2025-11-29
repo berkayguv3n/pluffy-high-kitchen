@@ -110,22 +110,21 @@ export const SlotGame = () => {
       setFreeSpins(freeSpins - 1);
     }
 
-    const newGrid: Cell[][] = [];
-    for (let row = 0; row < ROWS; row++) {
-      const newRow: Cell[] = [];
-      for (let col = 0; col < COLS; col++) {
-        newRow.push({
-          symbol: generateRandomSymbol(freeSpins > 0),
-          isWinning: false,
-          id: `${row}-${col}-${Date.now()}`,
-        });
-      }
-      newGrid.push(newRow);
-    }
-    setGrid(newGrid);
+    // ASLA yeni grid oluşturma! Sadece mevcut grid'in sembollerini değiştir
+    const updatedGrid = grid.map((row, rowIndex) => 
+      row.map((cell, colIndex) => ({
+        ...cell,
+        symbol: generateRandomSymbol(freeSpins > 0),
+        isWinning: false,
+        id: `${rowIndex}-${colIndex}-${Date.now()}` // ID değiştir ki React animasyon yapsın
+      }))
+    );
+    
+    setGrid(updatedGrid);
 
     setTimeout(() => {
-      checkWins(newGrid);
+      setIsSpinning(false);
+      checkWins(updatedGrid);
     }, 800);
   };
 
