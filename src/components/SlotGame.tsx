@@ -117,6 +117,8 @@ export const SlotGame = () => {
     let hasWins = false;
     let winAmount = 0;
     let totalMultiplier = freeSpinMultiplier;
+    
+    // Kazanan hücrelerin isWinning durumunu SIFIRLA
     const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell, isWinning: false })));
 
     // Count each symbol type
@@ -199,32 +201,42 @@ export const SlotGame = () => {
   };
 
   const handleCascade = async (currentGrid: Cell[][]) => {
+    // Kazanan sembolleri SİLME, sadece yeni sembolleri EKLE
     const newGrid = currentGrid.map(row => [...row]);
 
+    // Her kolonda, kazanmayan sembolleri aşağı kaydır
     for (let col = 0; col < COLS; col++) {
-      let writePos = ROWS - 1;
+      const columnCells: Cell[] = [];
       
-      for (let row = ROWS - 1; row >= 0; row--) {
+      // Kazanmayan hücreleri topla (alta doğru)
+      for (let row = 0; row < ROWS; row++) {
         if (!newGrid[row][col].isWinning) {
-          if (writePos !== row) {
-            newGrid[writePos][col] = { ...newGrid[row][col], id: `${writePos}-${col}-${Date.now()}` };
-          }
-          writePos--;
+          columnCells.push(newGrid[row][col]);
         }
       }
-
-      while (writePos >= 0) {
-        newGrid[writePos][col] = {
+      
+      // Yukarıdan yeni semboller ekle
+      const newSymbolsCount = ROWS - columnCells.length;
+      for (let i = 0; i < newSymbolsCount; i++) {
+        columnCells.unshift({
           symbol: generateRandomSymbol(freeSpins > 0),
           isWinning: false,
-          id: `${writePos}-${col}-${Date.now()}`,
+          id: `${i}-${col}-${Date.now()}-${Math.random()}`,
+        });
+      }
+      
+      // Kolonu yeniden oluştur
+      for (let row = 0; row < ROWS; row++) {
+        newGrid[row][col] = {
+          ...columnCells[row],
+          id: `${row}-${col}-${Date.now()}-${Math.random()}`,
         };
-        writePos--;
       }
     }
 
     setGrid(newGrid);
 
+    // Yeni grid'de kazanç kontrolü
     setTimeout(() => {
       checkWins(newGrid);
     }, 800);

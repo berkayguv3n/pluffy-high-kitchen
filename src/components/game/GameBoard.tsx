@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Cell } from "../SlotGame";
 import { SymbolDisplay } from "./SymbolDisplay";
-import reelFrame from "@/assets/reel-frame.png";
 
 interface GameBoardProps {
   grid: Cell[][];
@@ -11,35 +10,9 @@ interface GameBoardProps {
 export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
   return (
     <div className="relative">
-      {/* Reel Frame Overlay */}
-      <div className="absolute inset-0 pointer-events-none z-30">
-        <img 
-          src={reelFrame} 
-          alt="" 
-          className="w-full h-full object-cover"
-          style={{
-            filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))"
-          }}
-        />
-      </div>
-      {/* Board frame - golden rounded rectangle */}
-      <div 
-        className="absolute -inset-4 rounded-3xl pointer-events-none z-10"
-        style={{
-          background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
-          padding: "6px",
-        }}
-      >
-        <div 
-          className="w-full h-full rounded-[1.6rem]"
-          style={{
-            background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,250,240,0.95))",
-          }}
-        />
-      </div>
       
-      {/* Game grid - 6 columns x 5 rows */}
-      <div className="relative grid grid-cols-6 gap-2 p-12 z-20">
+      {/* Game grid - 5 rows x 6 columns */}
+      <div className="relative grid grid-cols-6 gap-3 p-8 z-20 bg-purple-900/40 rounded-3xl backdrop-blur-sm border-4 border-purple-700/50 shadow-2xl">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <motion.div
