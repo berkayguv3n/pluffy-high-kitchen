@@ -31,7 +31,7 @@ export const Sidebar = ({ balance, bet, setBet, freeSpins, freeSpinMultiplier }:
         </div>
       </div>
 
-      {/* Super Free Spins Button */}
+      {/* Super Free Spins Button with Price */}
       <div className="flex flex-col items-center gap-2">
         <div className="text-white text-lg font-bold text-center text-glow drop-shadow-lg">
           SUPER
