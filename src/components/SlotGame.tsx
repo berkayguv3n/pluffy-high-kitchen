@@ -33,8 +33,8 @@ export const SlotGame = () => {
   const [lastSpinWin, setLastSpinWin] = useState(0);
   const [grid, setGrid] = useState<Cell[][]>([]);
 
-  const ROWS = 6;
-  const COLS = 5;
+  const ROWS = 5;
+  const COLS = 6;
 
   useEffect(() => {
     initializeGrid();
