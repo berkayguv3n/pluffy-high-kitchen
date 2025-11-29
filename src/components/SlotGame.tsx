@@ -30,6 +30,7 @@ export const SlotGame = () => {
   const [freeSpinMultiplier, setFreeSpinMultiplier] = useState(1);
   const [showFreeSpinsModal, setShowFreeSpinsModal] = useState(false);
   const [currentWin, setCurrentWin] = useState(0);
+  const [lastSpinWin, setLastSpinWin] = useState(0);
   const [grid, setGrid] = useState<Cell[][]>([]);
 
   const ROWS = 5;
@@ -92,6 +93,7 @@ export const SlotGame = () => {
 
     setIsSpinning(true);
     setCurrentWin(0);
+    setLastSpinWin(0);
 
     if (freeSpins === 0) {
       setBalance(balance - bet);
@@ -179,6 +181,7 @@ export const SlotGame = () => {
     if (hasWins) {
       const finalWin = Math.floor(winAmount * totalMultiplier);
       setCurrentWin(finalWin);
+      setLastSpinWin(prev => prev + finalWin);
       setTotalWin(totalWin + finalWin);
       setBalance(prev => prev + finalWin);
       setGrid(newGrid);
@@ -278,6 +281,7 @@ export const SlotGame = () => {
         bet={bet}
         onSpin={handleSpin}
         isSpinning={isSpinning}
+        lastSpinWin={lastSpinWin}
       />
 
       <WinDisplay currentWin={currentWin} />
