@@ -240,18 +240,20 @@ export const SlotGame = () => {
          }}>
       <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
-      <div className="relative z-10 flex h-screen">
+      <div className="relative z-10 flex h-screen items-center justify-center">
         {/* Left Sidebar */}
-        <Sidebar
-          balance={balance}
-          bet={bet}
-          setBet={setBet}
-          freeSpins={freeSpins}
-          freeSpinMultiplier={freeSpinMultiplier}
-        />
+        <div className="absolute left-0 top-0 bottom-0">
+          <Sidebar
+            balance={balance}
+            bet={bet}
+            setBet={setBet}
+            freeSpins={freeSpins}
+            freeSpinMultiplier={freeSpinMultiplier}
+          />
+        </div>
 
-        {/* Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center pb-32 scale-75 lg:scale-85">
+        {/* Main Game Area - Centered */}
+        <div className="flex flex-col items-center justify-center scale-75 lg:scale-85">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -269,9 +271,6 @@ export const SlotGame = () => {
 
           <GameBoard grid={grid} isSpinning={isSpinning} />
         </div>
-
-        {/* Right space */}
-        <div className="w-20 hidden lg:block" />
       </div>
 
       <BottomBar

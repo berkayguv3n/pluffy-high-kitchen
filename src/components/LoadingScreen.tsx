@@ -51,125 +51,127 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
             backgroundPosition: "center",
           }}
         >
-          {/* Green Glow Effect */}
-          <motion.div
-            className="absolute top-1/4 left-1/2 -translate-x-1/2"
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.8, 1, 0.8],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <img
-              src={loadingGlow}
-              alt=""
-              className="w-[350px] h-auto"
-              style={{ filter: "blur(40px)" }}
-            />
-          </motion.div>
-
-          {/* Logo */}
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="absolute top-[15%] left-1/2 -translate-x-1/2"
-          >
-            <img
-              src={loadingLogo}
-              alt="Pluffy: High Kitchen"
-              className="w-[320px] h-auto drop-shadow-2xl"
-            />
-          </motion.div>
-
-          {/* Character */}
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4, type: "spring" }}
-            className="absolute bottom-[25%] left-1/2 -translate-x-1/2"
-          >
-            <motion.img
-              src={loadingCharacter}
-              alt="Chef Character"
-              className="w-[280px] h-auto drop-shadow-2xl"
+          <div className="flex flex-col items-center justify-center h-full w-full">
+            {/* Green Glow Effect */}
+            <motion.div
+              className="absolute top-1/4"
               animate={{
-                y: [0, -10, 0],
+                scale: [1, 1.1, 1],
+                opacity: [0.8, 1, 0.8],
               }}
               transition={{
-                duration: 2.5,
+                duration: 2,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-            />
-          </motion.div>
+            >
+              <img
+                src={loadingGlow}
+                alt=""
+                className="w-[350px] h-auto"
+                style={{ filter: "blur(40px)" }}
+              />
+            </motion.div>
 
-          {/* Loading Text and Bar Container */}
-          <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 flex flex-col items-center">
-            {/* Loading Text */}
+            {/* Logo */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mb-4"
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="absolute top-[15%]"
+            >
+              <img
+                src={loadingLogo}
+                alt="Pluffy: High Kitchen"
+                className="w-[320px] h-auto drop-shadow-2xl"
+              />
+            </motion.div>
+
+            {/* Character */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4, type: "spring" }}
+              className="absolute bottom-[25%]"
             >
               <motion.img
-                src={loadingText}
-                alt="Loading"
-                className="w-[280px] h-auto"
+                src={loadingCharacter}
+                alt="Chef Character"
+                className="w-[280px] h-auto drop-shadow-2xl"
                 animate={{
-                  opacity: [1, 0.7, 1],
+                  y: [0, -10, 0],
                 }}
                 transition={{
-                  duration: 1.5,
+                  duration: 2.5,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
               />
             </motion.div>
 
-            {/* Loading Bar */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="relative w-[350px]"
-            >
-              {/* Bar Bottom Layer */}
-              <img
-                src={loadingBarBottom}
-                alt=""
-                className="absolute inset-0 w-full h-auto"
-              />
-
-              {/* Bar Fill with mask */}
-              <div className="absolute inset-0 overflow-hidden">
-                <motion.div
-                  style={{
-                    width: `${progress}%`,
-                    transition: "width 0.3s ease-out",
+            {/* Loading Text and Bar Container */}
+            <div className="absolute bottom-[12%] flex flex-col items-center">
+              {/* Loading Text */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="mb-4"
+              >
+                <motion.img
+                  src={loadingText}
+                  alt="Loading"
+                  className="w-[280px] h-auto"
+                  animate={{
+                    opacity: [1, 0.7, 1],
                   }}
-                  className="h-full"
-                >
-                  <img
-                    src={loadingBarFill}
-                    alt=""
-                    className="h-full w-[350px] object-cover"
-                  />
-                </motion.div>
-              </div>
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              </motion.div>
 
-              {/* Bar Top Frame */}
-              <img
-                src={loadingBarTop}
-                alt=""
-                className="relative w-full h-auto drop-shadow-lg"
-              />
-            </motion.div>
+              {/* Loading Bar */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="relative w-[350px]"
+              >
+                {/* Bar Bottom Layer */}
+                <img
+                  src={loadingBarBottom}
+                  alt=""
+                  className="absolute inset-0 w-full h-auto"
+                />
+
+                {/* Bar Fill with mask */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <motion.div
+                    style={{
+                      width: `${progress}%`,
+                      transition: "width 0.3s ease-out",
+                    }}
+                    className="h-full"
+                  >
+                    <img
+                      src={loadingBarFill}
+                      alt=""
+                      className="h-full w-[350px] object-cover"
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Bar Top Frame */}
+                <img
+                  src={loadingBarTop}
+                  alt=""
+                  className="relative w-full h-auto drop-shadow-lg"
+                />
+              </motion.div>
+            </div>
           </div>
 
           {/* Floating particles */}
