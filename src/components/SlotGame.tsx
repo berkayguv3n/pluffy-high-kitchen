@@ -57,8 +57,24 @@ export const SlotGame = () => {
   };
 
   const generateRandomSymbol = (allowBomb = false): Symbol => {
-    const types: Symbol["type"][] = [
-      "purple", "grape", "green", "red", "heart", "plum", "blue", "banana",
+    // RTP 96.5'e göre ağırlıklandırılmış sembol dağılımı
+    // En pahalı semboller en az, en ucuz semboller en çok gelir
+    const weightedSymbols = [
+      // Premium (Chef) - En az %5
+      ...Array(5).fill("purple"),
+      
+      // High symbols - %10
+      ...Array(10).fill("plum"),
+      ...Array(10).fill("red"),
+      
+      // Mid symbols - %20
+      ...Array(20).fill("heart"),
+      ...Array(20).fill("grape"),
+      
+      // Low symbols - %35 (En çok)
+      ...Array(35).fill("green"),
+      ...Array(35).fill("blue"),
+      ...Array(35).fill("banana"),
     ];
     
     if (allowBomb && Math.random() < 0.15) {
@@ -69,7 +85,7 @@ export const SlotGame = () => {
       };
     }
 
-    const randomType = types[Math.floor(Math.random() * types.length)];
+    const randomType = weightedSymbols[Math.floor(Math.random() * weightedSymbols.length)] as Symbol["type"];
     return {
       id: Math.random().toString(36),
       type: randomType,
@@ -118,8 +134,8 @@ export const SlotGame = () => {
     let winAmount = 0;
     let totalMultiplier = freeSpinMultiplier;
     
-    // Kazanan hücrelerin isWinning durumunu SIFIRLA
-    const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell, isWinning: false })));
+    // ÖNEMLİ: Mevcut grid'i kullan, isWinning durumunu korumadan yeni hesapla
+    const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
 
     // Count each symbol type
     const symbolCounts: { [key: string]: { count: number; positions: { row: number; col: number }[] } } = {};
@@ -201,31 +217,33 @@ export const SlotGame = () => {
   };
 
   const handleCascade = async (currentGrid: Cell[][]) => {
-    // Kazanan sembolleri SİLME, sadece yeni sembolleri EKLE
+    // SADECE kazanan sembolleri SİL, yeni sembolleri üstten ekle
     const newGrid = currentGrid.map(row => [...row]);
 
-    // Her kolonda, kazanmayan sembolleri aşağı kaydır
+    // Her kolonda işlem yap
     for (let col = 0; col < COLS; col++) {
       const columnCells: Cell[] = [];
       
-      // Kazanmayan hücreleri topla (alta doğru)
+      // SADECE kazanmayan hücreleri topla (alta doğru)
       for (let row = 0; row < ROWS; row++) {
         if (!newGrid[row][col].isWinning) {
-          columnCells.push(newGrid[row][col]);
+          columnCells.push({ ...newGrid[row][col], isWinning: false });
         }
       }
       
-      // Yukarıdan yeni semboller ekle
-      const newSymbolsCount = ROWS - columnCells.length;
-      for (let i = 0; i < newSymbolsCount; i++) {
+      // Kaç tane sembol kaybettik?
+      const missingCount = ROWS - columnCells.length;
+      
+      // Yukarıdan YENİ rastgele semboller ekle
+      for (let i = 0; i < missingCount; i++) {
         columnCells.unshift({
           symbol: generateRandomSymbol(freeSpins > 0),
           isWinning: false,
-          id: `${i}-${col}-${Date.now()}-${Math.random()}`,
+          id: `new-${i}-${col}-${Date.now()}-${Math.random()}`,
         });
       }
       
-      // Kolonu yeniden oluştur
+      // Kolonu güncelle
       for (let row = 0; row < ROWS; row++) {
         newGrid[row][col] = {
           ...columnCells[row],
@@ -236,7 +254,7 @@ export const SlotGame = () => {
 
     setGrid(newGrid);
 
-    // Yeni grid'de kazanç kontrolü
+    // Yeni kazanç kontrolü
     setTimeout(() => {
       checkWins(newGrid);
     }, 800);
