@@ -209,7 +209,7 @@ export const SlotGame = () => {
 
       setTimeout(() => {
         handleCascade(newGrid);
-      }, 600);
+      }, 800);
     } else {
       setIsSpinning(false);
     }
@@ -264,7 +264,7 @@ export const SlotGame = () => {
     // Yeni win kontrolü
     setTimeout(() => {
       checkWins(currentGrid);
-    }, 400);
+    }, 600);
   };
 
   return (
