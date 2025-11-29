@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Cell } from "../SlotGame";
 import { SymbolDisplay } from "./SymbolDisplay";
+import reelFrame from "@/assets/reel-frame.png";
 
 interface GameBoardProps {
   grid: Cell[][];
@@ -10,6 +11,17 @@ interface GameBoardProps {
 export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
   return (
     <div className="relative">
+      {/* Reel Frame Overlay */}
+      <div className="absolute inset-0 pointer-events-none z-30">
+        <img 
+          src={reelFrame} 
+          alt="" 
+          className="w-full h-full object-cover"
+          style={{
+            filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))"
+          }}
+        />
+      </div>
       {/* Board frame - golden rounded rectangle */}
       <div 
         className="absolute -inset-4 rounded-3xl pointer-events-none z-10"
@@ -27,7 +39,7 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
       </div>
       
       {/* Game grid - 6 columns x 5 rows */}
-      <div className="relative grid grid-cols-6 gap-2 p-6 z-20">
+      <div className="relative grid grid-cols-6 gap-2 p-12 z-20">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <motion.div
