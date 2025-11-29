@@ -217,41 +217,49 @@ export const SlotGame = () => {
   };
 
   const handleCascade = async (currentGrid: Cell[][]) => {
-    // Grid'in bir kopyasını al - ASLA yeni grid oluşturma!
-    const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
-
-    // Her kolonda işlem yap
-    for (let col = 0; col < COLS; col++) {
-      const nonWinningSymbols: Symbol[] = [];
-      
-      // Bu kolondaki kazanmayan sembolleri topla
-      for (let row = ROWS - 1; row >= 0; row--) {
-        if (!newGrid[row][col].isWinning) {
-          nonWinningSymbols.push(newGrid[row][col].symbol);
+    // ÖNEMLİ: Grid'i KLONLAMA, direk üzerinde çalış
+    // Sadece symbol'leri değiştir, cell yapısını KORUMA!
+    
+    // Adım 1: Kazanan pozisyonlardaki sembolleri null yap
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (currentGrid[row][col].isWinning) {
+          currentGrid[row][col].symbol = null as any; // Geçici null
+          currentGrid[row][col].isWinning = false;
         }
-      }
-      
-      // Kaç yeni sembol lazım?
-      const newSymbolsNeeded = ROWS - nonWinningSymbols.length;
-      
-      // Yeni sembolleri üret
-      for (let i = 0; i < newSymbolsNeeded; i++) {
-        nonWinningSymbols.push(generateRandomSymbol(freeSpins > 0));
-      }
-      
-      // Kolonu ALTTAN YUKARIYA doldur - grid pozisyonları değişmez!
-      for (let row = ROWS - 1; row >= 0; row--) {
-        newGrid[row][col].symbol = nonWinningSymbols[ROWS - 1 - row];
-        newGrid[row][col].isWinning = false;
-        // ID'yi KORUYORUZ - React re-render etmesin
       }
     }
 
-    setGrid(newGrid);
+    // Adım 2: Her kolonda gravity uygula (sadece symbol'leri kaydır)
+    for (let col = 0; col < COLS; col++) {
+      // Bu kolondaki null olmayan sembolleri topla (ALTTAN başla)
+      const symbols: Symbol[] = [];
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (currentGrid[row][col].symbol !== null) {
+          symbols.unshift(currentGrid[row][col].symbol);
+        }
+      }
+      
+      // Kaç yeni symbol lazım?
+      const newNeeded = ROWS - symbols.length;
+      
+      // Üstten yeni symboller ekle
+      for (let i = 0; i < newNeeded; i++) {
+        symbols.unshift(generateRandomSymbol(freeSpins > 0));
+      }
+      
+      // Kolonu güncelle - sadece symbol'leri değiştir
+      for (let row = 0; row < ROWS; row++) {
+        currentGrid[row][col].symbol = symbols[row];
+      }
+    }
 
-    // Yeni kazanç kontrolü
+    // React'a güncellemeyi bildir
+    setGrid([...currentGrid]);
+
+    // Yeni win kontrolü
     setTimeout(() => {
-      checkWins(newGrid);
+      checkWins(currentGrid);
     }, 400);
   };
 
