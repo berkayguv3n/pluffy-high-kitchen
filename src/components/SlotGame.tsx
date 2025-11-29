@@ -146,12 +146,25 @@ export const SlotGame = () => {
       totalMultiplier *= bomb.multiplier;
     });
 
-    // SWEET BONANZA STYLE: 12+ of SAME symbol anywhere = WIN
+    // SWEET BONANZA STYLE: 8+ of SAME symbol anywhere = WIN
+    // Paytable based on symbol values from document
+    const symbolValues: { [key: string]: number } = {
+      purple: 2.0,   // Chef (Premium)
+      plum: 1.5,     // Brownie Tray (High)
+      red: 1.3,      // Pizza Slice (High)
+      heart: 1.0,    // Smoothie Cup (Mid)
+      grape: 0.8,    // Cookie Jar (Mid)
+      green: 0.5,    // Muffin (Low)
+      blue: 0.4,     // Spatula (Low)
+      banana: 0.3,   // Rolling Pin (Low)
+    };
+
     Object.entries(symbolCounts).forEach(([symbolType, data]) => {
-      if (data.count >= 12) {
+      if (data.count >= 8) {
         hasWins = true;
-        // Progressive payout
-        const baseWin = bet * 0.5;
+        // Progressive payout based on symbol value
+        const symbolValue = symbolValues[symbolType] || 0.5;
+        const baseWin = bet * symbolValue;
         winAmount += data.count * baseWin;
 
         // Mark ALL matching symbols as winning
