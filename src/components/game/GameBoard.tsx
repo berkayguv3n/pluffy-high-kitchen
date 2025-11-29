@@ -9,23 +9,35 @@ interface GameBoardProps {
 
 export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
   return (
-    <div className="grid grid-cols-6 gap-2 md:gap-3 mb-6">
-      {grid.map((row, rowIndex) =>
-        row.map((cell, colIndex) => (
-          <motion.div
-            key={cell.id}
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{
-              duration: 0.3,
-              delay: isSpinning ? (rowIndex * 0.1 + colIndex * 0.05) : 0,
-            }}
-            className="aspect-square"
-          >
-            <SymbolDisplay cell={cell} />
-          </motion.div>
-        ))
-      )}
+    <div className="relative">
+      {/* Board frame */}
+      <div className="absolute -inset-4 rounded-3xl border-8 border-[#FFD700] pointer-events-none z-10" 
+           style={{
+             background: "linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,215,0,0.2))",
+             boxShadow: "0 8px 32px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.4)"
+           }}
+      />
+      
+      {/* Game grid */}
+      <div className="relative grid grid-cols-6 gap-3 p-6 rounded-2xl gradient-board shadow-card">
+        {grid.map((row, rowIndex) =>
+          row.map((cell, colIndex) => (
+            <motion.div
+              key={cell.id}
+              initial={{ y: -100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{
+                duration: 0.4,
+                delay: isSpinning ? (rowIndex * 0.08 + colIndex * 0.04) : 0,
+                ease: "easeOut"
+              }}
+              className="w-20 h-20 md:w-24 md:h-24"
+            >
+              <SymbolDisplay cell={cell} />
+            </motion.div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

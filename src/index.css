@@ -8,61 +8,65 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 280 60% 8%;
-    --foreground: 45 100% 95%;
+    --background: 200 100% 92%;
+    --foreground: 280 80% 25%;
 
-    --card: 280 50% 12%;
-    --card-foreground: 45 100% 95%;
+    --card: 280 30% 98%;
+    --card-foreground: 280 80% 25%;
 
-    --popover: 280 55% 10%;
-    --popover-foreground: 45 100% 95%;
+    --popover: 280 30% 98%;
+    --popover-foreground: 280 80% 25%;
 
-    --primary: 340 100% 55%;
+    --primary: 280 85% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 280 100% 65%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 45 100% 65%;
+    --secondary-foreground: 280 80% 25%;
 
-    --muted: 280 40% 20%;
-    --muted-foreground: 45 60% 80%;
+    --muted: 200 40% 85%;
+    --muted-foreground: 280 40% 45%;
 
-    --accent: 55 100% 55%;
-    --accent-foreground: 280 60% 8%;
+    --accent: 340 90% 60%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 280 40% 25%;
-    --input: 280 40% 20%;
-    --ring: 340 100% 55%;
+    --border: 45 100% 70%;
+    --input: 280 30% 95%;
+    --ring: 280 85% 55%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /* Fruit theme colors */
-    --strawberry: 350 95% 65%;
-    --grape: 280 85% 60%;
-    --watermelon: 140 75% 55%;
-    --orange: 35 100% 60%;
-    --lemon: 55 100% 60%;
-    --cherry: 355 90% 55%;
-    --banana: 50 100% 65%;
-    --plum: 290 70% 50%;
+    /* Candy theme colors - glossy vibrant */
+    --candy-purple: 280 85% 60%;
+    --candy-grape: 270 75% 50%;
+    --candy-green: 145 70% 45%;
+    --candy-red: 355 85% 55%;
+    --candy-heart: 350 90% 60%;
+    --candy-plum: 290 65% 50%;
+    --candy-blue: 210 85% 60%;
+    --candy-banana: 50 100% 60%;
     
-    /* Game UI colors */
-    --game-bg: 280 60% 8%;
-    --game-board: 280 50% 12%;
-    --win-glow: 55 100% 60%;
-    --multiplier: 340 100% 55%;
+    /* UI colors */
+    --sky-blue: 200 100% 92%;
+    --candy-pink: 320 85% 75%;
+    --button-gradient-start: 280 85% 55%;
+    --button-gradient-end: 320 85% 60%;
+    --sidebar-bg: 35 95% 55%;
+    --sidebar-border: 45 100% 50%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(340 100% 55%), hsl(280 100% 65%));
-    --gradient-win: linear-gradient(135deg, hsl(55 100% 60%), hsl(35 100% 60%));
-    --gradient-board: linear-gradient(180deg, hsl(280 50% 12%), hsl(280 40% 8%));
+    --gradient-sky: linear-gradient(180deg, hsl(200 100% 85%), hsl(200 100% 92%));
+    --gradient-button: linear-gradient(135deg, hsl(280 85% 55%), hsl(320 85% 60%));
+    --gradient-board: linear-gradient(135deg, hsl(0 0% 100% / 0.9), hsl(280 30% 98% / 0.95));
+    --gradient-sidebar: linear-gradient(180deg, hsl(35 95% 60%), hsl(35 95% 50%));
     
     /* Shadows */
-    --shadow-glow: 0 0 30px hsl(var(--primary) / 0.4);
-    --shadow-win: 0 0 40px hsl(var(--win-glow) / 0.6);
-    --shadow-card: 0 10px 30px -10px hsl(0 0% 0% / 0.5);
+    --shadow-symbol: 0 4px 12px hsl(0 0% 0% / 0.2);
+    --shadow-win: 0 0 30px hsl(45 100% 60% / 0.8);
+    --shadow-card: 0 8px 24px hsl(0 0% 0% / 0.15);
+    --shadow-button: 0 6px 16px hsl(280 85% 35% / 0.4);
   }
 }
 
@@ -73,36 +77,50 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Fredoka', 'Comic Sans MS', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
   }
 }
 
 @layer utilities {
-  .gradient-primary {
-    background: var(--gradient-primary);
+  .gradient-sky {
+    background: var(--gradient-sky);
   }
   
-  .gradient-win {
-    background: var(--gradient-win);
+  .gradient-button {
+    background: var(--gradient-button);
   }
   
   .gradient-board {
     background: var(--gradient-board);
   }
   
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
+  .gradient-sidebar {
+    background: var(--gradient-sidebar);
+  }
+  
+  .shadow-symbol {
+    box-shadow: var(--shadow-symbol);
   }
   
   .shadow-win {
     box-shadow: var(--shadow-win);
+    filter: drop-shadow(0 0 20px hsl(45 100% 60%));
   }
   
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
   
+  .shadow-button {
+    box-shadow: var(--shadow-button);
+  }
+  
   .text-glow {
-    text-shadow: 0 0 20px hsl(var(--win-glow) / 0.8);
+    text-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  }
+  
+  .candy-glow {
+    filter: drop-shadow(0 4px 8px hsl(0 0% 0% / 0.25));
   }
 }

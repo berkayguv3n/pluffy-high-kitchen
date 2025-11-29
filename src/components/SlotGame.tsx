@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import { GameBoard } from "./game/GameBoard";
-import { GameControls } from "./game/GameControls";
-import { GameStats } from "./game/GameStats";
+import { Sidebar } from "./game/Sidebar";
+import { BottomBar } from "./game/BottomBar";
 import { FreeSpinsModal } from "./game/FreeSpinsModal";
 import { WinDisplay } from "./game/WinDisplay";
 import { toast } from "sonner";
 
 export type Symbol = {
   id: string;
-  type: "strawberry" | "grape" | "watermelon" | "orange" | "lemon" | "cherry" | "banana" | "plum" | "bomb";
+  type: "purple" | "grape" | "green" | "red" | "heart" | "plum" | "blue" | "banana" | "bomb";
   multiplier?: number;
 };
 
@@ -22,8 +20,8 @@ export type Cell = {
 };
 
 export const SlotGame = () => {
-  const [balance, setBalance] = useState(1000);
-  const [bet, setBet] = useState(10);
+  const [balance, setBalance] = useState(100000);
+  const [bet, setBet] = useState(2);
   const [totalWin, setTotalWin] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [freeSpins, setFreeSpins] = useState(0);
@@ -57,14 +55,14 @@ export const SlotGame = () => {
 
   const generateRandomSymbol = (allowBomb = false): Symbol => {
     const types: Symbol["type"][] = [
-      "strawberry",
-      "grape",
-      "watermelon",
-      "orange",
-      "lemon",
-      "cherry",
-      "banana",
+      "purple",
+      "grape", 
+      "green",
+      "red",
+      "heart",
       "plum",
+      "blue",
+      "banana",
     ];
     
     if (allowBomb && Math.random() < 0.15) {
@@ -126,8 +124,8 @@ export const SlotGame = () => {
     let totalMultiplier = freeSpinMultiplier;
     const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell, isWinning: false })));
 
-    // Count symbols
-    const symbolCounts: { [key: string]: number } = {};
+    // Count each symbol type
+    const symbolCounts: { [key: string]: { count: number; positions: { row: number; col: number }[] } } = {};
     const bombPositions: { row: number; col: number; multiplier: number }[] = [];
 
     currentGrid.forEach((row, rowIndex) => {
@@ -139,7 +137,11 @@ export const SlotGame = () => {
             multiplier: cell.symbol.multiplier || 2,
           });
         } else {
-          symbolCounts[cell.symbol.type] = (symbolCounts[cell.symbol.type] || 0) + 1;
+          if (!symbolCounts[cell.symbol.type]) {
+            symbolCounts[cell.symbol.type] = { count: 0, positions: [] };
+          }
+          symbolCounts[cell.symbol.type].count++;
+          symbolCounts[cell.symbol.type].positions.push({ row: rowIndex, col: colIndex });
         }
       });
     });
@@ -149,19 +151,17 @@ export const SlotGame = () => {
       totalMultiplier *= bomb.multiplier;
     });
 
-    // Check for winning combinations (8+ matching symbols)
-    Object.entries(symbolCounts).forEach(([symbolType, count]) => {
-      if (count >= 8) {
+    // Check for winning combinations (8+ of the SAME symbol)
+    Object.entries(symbolCounts).forEach(([symbolType, data]) => {
+      if (data.count >= 8) {
         hasWins = true;
-        winAmount += count * bet * 0.5;
+        // Progressive payout based on count
+        const baseWin = bet * 0.5;
+        winAmount += data.count * baseWin;
 
-        // Mark winning cells
-        newGrid.forEach(row => {
-          row.forEach(cell => {
-            if (cell.symbol.type === symbolType) {
-              cell.isWinning = true;
-            }
-          });
+        // Mark winning cells for this specific symbol type
+        data.positions.forEach(pos => {
+          newGrid[pos.row][pos.col].isWinning = true;
         });
       }
     });
@@ -178,7 +178,7 @@ export const SlotGame = () => {
       const finalWin = Math.floor(winAmount * totalMultiplier);
       setCurrentWin(finalWin);
       setTotalWin(totalWin + finalWin);
-      setBalance(balance + finalWin);
+      setBalance(prev => prev + finalWin);
       setGrid(newGrid);
 
       // Cascade after delay
@@ -193,7 +193,7 @@ export const SlotGame = () => {
   const handleCascade = async (currentGrid: Cell[][]) => {
     const newGrid = currentGrid.map(row => [...row]);
 
-    // Remove winning symbols
+    // Remove winning symbols and drop down
     for (let col = 0; col < COLS; col++) {
       let writePos = ROWS - 1;
       
@@ -226,44 +226,58 @@ export const SlotGame = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-primary p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-7xl mx-auto"
-      >
-        <motion.h1
-          className="text-5xl md:text-7xl font-bold text-center mb-8 text-glow"
-          animate={{ scale: [1, 1.02, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          🍓 Sweet Fruit Bonanza 🍇
-        </motion.h1>
+    <div className="min-h-screen gradient-sky relative overflow-hidden">
+      {/* Decorative clouds and candy background elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-10 left-10 text-6xl opacity-40">☁️</div>
+        <div className="absolute top-32 right-20 text-8xl opacity-30">☁️</div>
+        <div className="absolute bottom-20 left-1/4 text-7xl opacity-35">🍭</div>
+        <div className="absolute top-1/3 right-10 text-6xl opacity-40">🍬</div>
+      </div>
 
-        <div className="grid lg:grid-cols-[1fr_300px] gap-6">
-          <Card className="p-6 gradient-board shadow-card border-border">
-            <GameBoard grid={grid} isSpinning={isSpinning} />
-            <GameControls
-              balance={balance}
-              bet={bet}
-              setBet={setBet}
-              onSpin={handleSpin}
-              isSpinning={isSpinning}
-              freeSpins={freeSpins}
-            />
-          </Card>
+      <div className="relative z-10 flex h-screen">
+        {/* Left Sidebar */}
+        <Sidebar
+          balance={balance}
+          bet={bet}
+          setBet={setBet}
+          freeSpins={freeSpins}
+          freeSpinMultiplier={freeSpinMultiplier}
+        />
 
-          <GameStats
-            balance={balance}
-            totalWin={totalWin}
-            currentWin={currentWin}
-            freeSpins={freeSpins}
-            freeSpinMultiplier={freeSpinMultiplier}
-          />
+        {/* Main Game Area */}
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <h1 className="text-6xl font-bold text-glow" style={{
+              background: "linear-gradient(135deg, #FF6B9D 0%, #FFA500 50%, #FFD700 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
+            }}>
+              SWEET BONANZA
+            </h1>
+          </motion.div>
+
+          <GameBoard grid={grid} isSpinning={isSpinning} />
         </div>
 
-        <WinDisplay currentWin={currentWin} />
-      </motion.div>
+        {/* Right decorative space */}
+        <div className="w-24 hidden lg:block" />
+      </div>
+
+      {/* Bottom Bar */}
+      <BottomBar
+        balance={balance}
+        bet={bet}
+        onSpin={handleSpin}
+        isSpinning={isSpinning}
+      />
+
+      <WinDisplay currentWin={currentWin} />
 
       <FreeSpinsModal
         open={showFreeSpinsModal}
