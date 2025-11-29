@@ -164,25 +164,25 @@ export const SlotGame = () => {
     });
 
     // SWEET BONANZA STYLE: 8+ of SAME symbol anywhere = WIN
-    // Paytable based on symbol values from document
-    const symbolValues: { [key: string]: number } = {
-      purple: 2.0,   // Chef (Premium)
-      plum: 1.5,     // Brownie Tray (High)
-      red: 1.3,      // Pizza Slice (High)
-      heart: 1.0,    // Smoothie Cup (Mid)
-      grape: 0.8,    // Cookie Jar (Mid)
-      green: 0.5,    // Muffin (Low)
-      blue: 0.4,     // Spatula (Low)
-      banana: 0.3,   // Rolling Pin (Low)
+    // Daha gerçekçi paytable - sadece 8-9 symbol çok az kazanç verir
+    const symbolValues: { [key: string]: { [count: number]: number } } = {
+      purple: { 8: 0.5, 9: 0.7, 10: 1.2, 11: 2.0, 12: 3.5, 13: 6.0, 14: 10.0, 15: 20.0 },
+      plum: { 8: 0.4, 9: 0.6, 10: 1.0, 11: 1.5, 12: 2.5, 13: 4.0, 14: 7.0, 15: 15.0 },
+      red: { 8: 0.35, 9: 0.5, 10: 0.9, 11: 1.3, 12: 2.2, 13: 3.5, 14: 6.0, 15: 12.0 },
+      heart: { 8: 0.3, 9: 0.45, 10: 0.8, 11: 1.2, 12: 2.0, 13: 3.0, 14: 5.0, 15: 10.0 },
+      grape: { 8: 0.25, 9: 0.4, 10: 0.7, 11: 1.0, 12: 1.7, 13: 2.5, 14: 4.0, 15: 8.0 },
+      green: { 8: 0.2, 9: 0.3, 10: 0.5, 11: 0.8, 12: 1.3, 13: 2.0, 14: 3.0, 15: 6.0 },
+      blue: { 8: 0.15, 9: 0.25, 10: 0.4, 11: 0.7, 12: 1.2, 13: 1.8, 14: 2.5, 15: 5.0 },
+      banana: { 8: 0.1, 9: 0.2, 10: 0.35, 11: 0.6, 12: 1.0, 13: 1.5, 14: 2.0, 15: 4.0 },
     };
 
     Object.entries(symbolCounts).forEach(([symbolType, data]) => {
       if (data.count >= 8) {
         hasWins = true;
-        // Progressive payout based on symbol value
-        const symbolValue = symbolValues[symbolType] || 0.5;
-        const baseWin = bet * symbolValue;
-        winAmount += data.count * baseWin;
+        // Count'a göre kazanç - 8-9 sembol çok az kazanç verir
+        const payoutMultiplier = symbolValues[symbolType]?.[data.count] || 
+                                 symbolValues[symbolType]?.[15] || 0.1;
+        winAmount += bet * payoutMultiplier;
 
         // Mark ALL matching symbols as winning
         data.positions.forEach(pos => {
