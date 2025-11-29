@@ -146,9 +146,9 @@ export const SlotGame = () => {
       totalMultiplier *= bomb.multiplier;
     });
 
-    // SWEET BONANZA STYLE: 8+ of SAME symbol anywhere = WIN
+    // SWEET BONANZA STYLE: 12+ of SAME symbol anywhere = WIN
     Object.entries(symbolCounts).forEach(([symbolType, data]) => {
-      if (data.count >= 8) {
+      if (data.count >= 12) {
         hasWins = true;
         // Progressive payout
         const baseWin = bet * 0.5;
