@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { SlotGame } from "@/components/SlotGame";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 const Index = () => {
-  return <SlotGame />;
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <>
+      {isLoading && (
+        <LoadingScreen onLoadingComplete={() => setIsLoading(false)} />
+      )}
+      {!isLoading && <SlotGame />}
+    </>
+  );
 };
 
 export default Index;
