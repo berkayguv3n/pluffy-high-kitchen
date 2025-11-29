@@ -251,7 +251,7 @@ export const SlotGame = () => {
         />
 
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center pb-32">
+        <div className="flex-1 flex flex-col items-center justify-center pb-32 scale-75 lg:scale-85">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -282,7 +282,7 @@ export const SlotGame = () => {
         lastSpinWin={lastSpinWin}
       />
 
-      <WinDisplay currentWin={currentWin} />
+      <WinDisplay currentWin={currentWin} onDismiss={() => setCurrentWin(0)} />
 
       <FreeSpinsModal
         open={showFreeSpinsModal}

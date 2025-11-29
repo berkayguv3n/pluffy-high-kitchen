@@ -2,9 +2,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface WinDisplayProps {
   currentWin: number;
+  onDismiss: () => void;
 }
 
-export const WinDisplay = ({ currentWin }: WinDisplayProps) => {
+export const WinDisplay = ({ currentWin, onDismiss }: WinDisplayProps) => {
   return (
     <AnimatePresence>
       {currentWin > 0 && (
@@ -12,7 +13,8 @@ export const WinDisplay = ({ currentWin }: WinDisplayProps) => {
           initial={{ opacity: 0, y: 50, scale: 0.5 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.5 }}
-          className="fixed inset-0 flex items-center justify-center pointer-events-none z-50"
+          onClick={onDismiss}
+          className="fixed inset-0 flex items-center justify-center cursor-pointer z-50"
         >
           <motion.div
             animate={{
