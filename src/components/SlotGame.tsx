@@ -126,7 +126,7 @@ export const SlotGame = () => {
 
     setTimeout(() => {
       checkWins(newGrid);
-    }, 1500);
+    }, 800);
   };
 
   const checkWins = async (currentGrid: Cell[][]) => {
@@ -210,7 +210,7 @@ export const SlotGame = () => {
 
       setTimeout(() => {
         handleCascade(newGrid);
-      }, 1500);
+      }, 600);
     } else {
       setIsSpinning(false);
     }
@@ -254,10 +254,10 @@ export const SlotGame = () => {
 
     setGrid(newGrid);
 
-    // Yeni kazanç kontrolü
+    // Yeni kazanç kontrolü (symbollerin düşmesi için kısa bekleme)
     setTimeout(() => {
       checkWins(newGrid);
-    }, 800);
+    }, 400);
   };
 
   return (

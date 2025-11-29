@@ -17,15 +17,27 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
           row.map((cell, colIndex) => (
             <motion.div
               key={cell.id}
-              initial={{ y: -200, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+              initial={{ y: -100, opacity: 0 }}
+              animate={{ 
+                y: 0, 
+                opacity: 1,
+                scale: cell.isWinning ? [1, 1.08, 0, 0] : 1,
+              }}
               transition={{
-                duration: 0.7,
-                delay: isSpinning ? (rowIndex * 0.15 + colIndex * 0.08) : 0,
-                ease: [0.34, 1.56, 0.64, 1],
-                type: "spring",
-                damping: 12,
-                stiffness: 100
+                y: {
+                  duration: 0.3,
+                  delay: isSpinning ? (rowIndex * 0.05) : 0,
+                  ease: [0.15, 0.85, 0.35, 1], // ease-out cubic-bezier
+                },
+                opacity: {
+                  duration: cell.isWinning ? 0.18 : 0.3,
+                  delay: cell.isWinning ? 0 : (isSpinning ? (rowIndex * 0.05) : 0),
+                },
+                scale: {
+                  duration: 0.18,
+                  times: [0, 0.3, 0.8, 1],
+                  ease: "easeOut",
+                }
               }}
               className="w-24 h-24 rounded-xl"
               style={{
