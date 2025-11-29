@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GameBoard } from "./game/GameBoard";
+import { Sidebar } from "./game/Sidebar";
 import { BottomBar } from "./game/BottomBar";
 import { FreeSpinsModal } from "./game/FreeSpinsModal";
 import { WinDisplay } from "./game/WinDisplay";
@@ -32,20 +33,8 @@ export const SlotGame = () => {
   const [lastSpinWin, setLastSpinWin] = useState(0);
   const [grid, setGrid] = useState<Cell[][]>([]);
 
-  const ROWS = 4;
-  const COLS = 5;
-
-  // Paytable according to documentation
-  const paytable = {
-    purple: { 3: 5, 4: 25, 5: 100 },      // Pluffy Chef
-    plum: { 3: 3, 4: 15, 5: 70 },         // Brownie Tray
-    red: { 3: 2.5, 4: 12, 5: 60 },        // Pizza
-    heart: { 3: 2, 4: 10, 5: 50 },        // Smoothie
-    grape: { 3: 1.5, 4: 8, 5: 35 },       // Cookie Jar
-    green: { 3: 1, 4: 5, 5: 20 },         // Muffin
-    blue: { 3: 0.8, 4: 3, 5: 15 },        // Spatula
-    banana: { 3: 0.5, 4: 2, 5: 10 },      // Rolling Pin
-  };
+  const ROWS = 5;
+  const COLS = 6;
 
   useEffect(() => {
     initializeGrid();
@@ -130,7 +119,7 @@ export const SlotGame = () => {
     let totalMultiplier = freeSpinMultiplier;
     const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell, isWinning: false })));
 
-    // Count each symbol type with positions
+    // Count each symbol type
     const symbolCounts: { [key: string]: { count: number; positions: { row: number; col: number }[] } } = {};
     const bombPositions: { row: number; col: number; multiplier: number }[] = [];
 
@@ -157,35 +146,27 @@ export const SlotGame = () => {
       totalMultiplier *= bomb.multiplier;
     });
 
-    // Check wins using paytable (3, 4, or 5 of a kind)
+    // SWEET BONANZA STYLE: 8+ of SAME symbol anywhere = WIN
     Object.entries(symbolCounts).forEach(([symbolType, data]) => {
-      const count = data.count;
-      const payouts = paytable[symbolType as keyof typeof paytable];
-      
-      if (payouts) {
-        let payout = 0;
-        if (count >= 5) payout = payouts[5];
-        else if (count >= 4) payout = payouts[4];
-        else if (count >= 3) payout = payouts[3];
-        
-        if (payout > 0) {
-          hasWins = true;
-          winAmount += payout * bet;
-          
-          // Mark winning cells
-          data.positions.forEach(pos => {
-            newGrid[pos.row][pos.col].isWinning = true;
-          });
-        }
+      if (data.count >= 8) {
+        hasWins = true;
+        // Progressive payout
+        const baseWin = bet * 0.5;
+        winAmount += data.count * baseWin;
+
+        // Mark ALL matching symbols as winning
+        data.positions.forEach(pos => {
+          newGrid[pos.row][pos.col].isWinning = true;
+        });
       }
     });
 
-    // Check for Overbaked Spins trigger (3+ ovens)
-    if (bombPositions.length >= 3 && freeSpins === 0) {
+    // Check for free spins (4+ bombs)
+    if (bombPositions.length >= 4 && freeSpins === 0) {
       setFreeSpins(10);
       setFreeSpinMultiplier(1);
       setShowFreeSpinsModal(true);
-      toast.success("🎉 Overbaked Spins Triggered!");
+      toast.success("🎉 Free Spins Triggered!");
     }
 
     if (hasWins) {
@@ -246,28 +227,40 @@ export const SlotGame = () => {
          }}>
       <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen py-20 pb-40">
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <img 
-            src={loadingLogo} 
-            alt="Pluffy High Kitchen"
-            className="h-20 w-auto drop-shadow-2xl"
-            style={{
-              filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(100,255,100,0.6))"
-            }}
-          />
-        </motion.div>
+      <div className="relative z-10 flex h-screen">
+        {/* Left Sidebar */}
+        <Sidebar
+          balance={balance}
+          bet={bet}
+          setBet={setBet}
+          freeSpins={freeSpins}
+          freeSpinMultiplier={freeSpinMultiplier}
+        />
 
-        {/* Game Board */}
-        <GameBoard grid={grid} isSpinning={isSpinning} />
+        {/* Main Game Area */}
+        <div className="flex-1 flex flex-col items-center justify-center pb-32">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <img 
+              src={loadingLogo} 
+              alt="Pluffy High Kitchen"
+              className="h-16 w-auto drop-shadow-2xl"
+              style={{
+                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(100,255,100,0.6))"
+              }}
+            />
+          </motion.div>
+
+          <GameBoard grid={grid} isSpinning={isSpinning} />
+        </div>
+
+        {/* Right space */}
+        <div className="w-20 hidden lg:block" />
       </div>
 
-      {/* Bottom Bar */}
       <BottomBar
         balance={balance}
         bet={bet}
