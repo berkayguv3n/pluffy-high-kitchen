@@ -7,9 +7,10 @@ interface BottomBarProps {
   bet: number;
   onSpin: () => void;
   isSpinning: boolean;
+  lastSpinWin: number;
 }
 
-export const BottomBar = ({ balance, bet, onSpin, isSpinning }: BottomBarProps) => {
+export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: BottomBarProps) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 gradient-button flex items-center justify-between px-6 z-20 border-t-4 border-[#FFD700] shadow-card">
       {/* Left controls */}
@@ -35,6 +36,32 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning }: BottomBarProps) 
           <div className="text-xs font-bold opacity-80">BET</div>
           <div className="text-2xl font-bold text-glow">${bet.toFixed(2)}</div>
         </div>
+        
+        {lastSpinWin > 0 && (
+          <motion.div 
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center px-6 bg-accent/20 rounded-xl py-2 border-2 border-accent"
+          >
+            <div className="text-xs font-bold opacity-80">LAST SPIN WIN</div>
+            <motion.div 
+              className="text-3xl font-bold text-glow"
+              animate={{ 
+                scale: [1, 1.1, 1],
+                textShadow: [
+                  "0 0 10px rgba(255,215,0,0.5)",
+                  "0 0 20px rgba(255,215,0,0.8)",
+                  "0 0 10px rgba(255,215,0,0.5)"
+                ]
+              }}
+              transition={{ duration: 1, repeat: Infinity }}
+              style={{ color: "#FFD700" }}
+            >
+              ${lastSpinWin.toFixed(2)}
+            </motion.div>
+          </motion.div>
+        )}
+        
         <div className="text-center px-6">
           <div className="text-base font-bold text-glow">HOLD SPACE FOR TURBO SPIN</div>
         </div>

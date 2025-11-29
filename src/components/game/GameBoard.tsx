@@ -22,17 +22,20 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
       <div className="relative grid grid-cols-6 gap-3 p-6 rounded-2xl gradient-board shadow-card">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
-            <motion.div
-              key={cell.id}
-              initial={{ y: -100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{
-                duration: 0.4,
-                delay: isSpinning ? (rowIndex * 0.08 + colIndex * 0.04) : 0,
-                ease: "easeOut"
-              }}
-              className="w-20 h-20 md:w-24 md:h-24"
-            >
+          <motion.div
+            key={cell.id}
+            initial={{ y: -200, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{
+              duration: 0.7,
+              delay: isSpinning ? (rowIndex * 0.15 + colIndex * 0.08) : 0,
+              ease: [0.34, 1.56, 0.64, 1], // Bounce easing
+              type: "spring",
+              damping: 12,
+              stiffness: 100
+            }}
+            className="w-20 h-20 md:w-24 md:h-24"
+          >
               <SymbolDisplay cell={cell} />
             </motion.div>
           ))
