@@ -24,45 +24,50 @@ interface BottomBarProps {
 
 export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: BottomBarProps) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-24 gradient-button flex items-center justify-between px-6 z-20 border-t-4 border-[#FFD700] shadow-card">
+    <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/60 via-black/40 to-transparent backdrop-blur-sm flex items-center justify-between px-8 z-20">
       {/* Left controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <GameButton
           backgroundNormal={btnSquareNormal}
           backgroundHover={btnSquareHover}
           backgroundPressed={btnSquarePressed}
           iconImage={btnIconSettings}
-          className="w-16 h-16"
+          className="w-20 h-20"
         />
         <GameButton
           backgroundNormal={btnSquareNormal}
           backgroundHover={btnSquareHover}
           backgroundPressed={btnSquarePressed}
           iconImage={btnIconInfo}
-          className="w-16 h-16"
+          className="w-20 h-20"
         />
       </div>
 
       {/* Center info */}
-      <div className="flex items-center gap-8 text-white">
+      <div className="flex items-center gap-12 text-white">
         <div className="text-center">
-          <div className="text-xs font-bold opacity-80">CREDIT</div>
-          <div className="text-2xl font-bold text-glow">${balance.toFixed(2)}</div>
+          <div className="text-sm font-bold opacity-90 mb-1">CREDIT</div>
+          <div className="text-3xl font-bold text-glow drop-shadow-lg">
+            ${balance.toFixed(2)}
+          </div>
         </div>
+        
         <div className="text-center">
-          <div className="text-xs font-bold opacity-80">BET</div>
-          <div className="text-2xl font-bold text-glow">${bet.toFixed(2)}</div>
+          <div className="text-sm font-bold opacity-90 mb-1">BET</div>
+          <div className="text-3xl font-bold text-glow drop-shadow-lg">
+            ${bet.toFixed(2)}
+          </div>
         </div>
         
         {lastSpinWin > 0 && (
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-center px-6 bg-accent/20 rounded-xl py-2 border-2 border-accent"
+            className="text-center"
           >
-            <div className="text-xs font-bold opacity-80">LAST SPIN WIN</div>
+            <div className="text-sm font-bold opacity-90 mb-1">LAST SPIN WIN</div>
             <motion.div 
-              className="text-3xl font-bold text-glow"
+              className="text-4xl font-bold"
               animate={{ 
                 scale: [1, 1.1, 1],
                 textShadow: [
@@ -81,13 +86,13 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <GameButton
           backgroundNormal={btnRectNormal}
           backgroundHover={btnRectHover}
           backgroundPressed={btnRectPressed}
           textImage={btnTextMaxBet}
-          className="w-32 h-14"
+          className="w-40 h-16"
         />
         
         <GameButton
@@ -96,7 +101,7 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
           backgroundPressed={btnSpinPressed}
           onClick={onSpin}
           disabled={isSpinning}
-          className="w-24 h-24"
+          className="w-32 h-32"
         />
 
         <GameButton
@@ -104,7 +109,7 @@ export const BottomBar = ({ balance, bet, onSpin, isSpinning, lastSpinWin }: Bot
           backgroundHover={btnRectHover}
           backgroundPressed={btnRectPressed}
           textImage={btnTextAuto}
-          className="w-32 h-14"
+          className="w-40 h-16"
         />
       </div>
     </div>
