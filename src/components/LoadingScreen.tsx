@@ -67,7 +67,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
             <img
               src={loadingGlow}
               alt=""
-              className="w-[500px] h-auto"
+              className="w-[350px] h-auto"
               style={{ filter: "blur(40px)" }}
             />
           </motion.div>
@@ -82,7 +82,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
             <img
               src={loadingLogo}
               alt="Pluffy: High Kitchen"
-              className="w-[450px] h-auto drop-shadow-2xl"
+              className="w-[320px] h-auto drop-shadow-2xl"
             />
           </motion.div>
 
@@ -96,7 +96,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
             <motion.img
               src={loadingCharacter}
               alt="Chef Character"
-              className="w-[400px] h-auto drop-shadow-2xl"
+              className="w-[280px] h-auto drop-shadow-2xl"
               animate={{
                 y: [0, -10, 0],
               }}
@@ -120,7 +120,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
               <motion.img
                 src={loadingText}
                 alt="Loading"
-                className="w-[400px] h-auto"
+                className="w-[280px] h-auto"
                 animate={{
                   opacity: [1, 0.7, 1],
                 }}
@@ -137,7 +137,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.8 }}
-              className="relative w-[500px]"
+              className="relative w-[350px]"
             >
               {/* Bar Bottom Layer */}
               <img
@@ -158,7 +158,7 @@ export const LoadingScreen = ({ onLoadingComplete }: LoadingScreenProps) => {
                   <img
                     src={loadingBarFill}
                     alt=""
-                    className="h-full w-[500px] object-cover"
+                    className="h-full w-[350px] object-cover"
                   />
                 </motion.div>
               </div>
