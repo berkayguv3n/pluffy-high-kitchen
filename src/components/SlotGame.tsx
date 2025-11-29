@@ -6,6 +6,8 @@ import { BottomBar } from "./game/BottomBar";
 import { FreeSpinsModal } from "./game/FreeSpinsModal";
 import { WinDisplay } from "./game/WinDisplay";
 import { toast } from "sonner";
+import gameBackground from "@/assets/game-background.png";
+import loadingLogo from "@/assets/loading-logo.png";
 
 export type Symbol = {
   id: string;
@@ -226,14 +228,15 @@ export const SlotGame = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-sky relative overflow-hidden">
-      {/* Decorative clouds and candy background elements */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-10 left-10 text-6xl opacity-40">☁️</div>
-        <div className="absolute top-32 right-20 text-8xl opacity-30">☁️</div>
-        <div className="absolute bottom-20 left-1/4 text-7xl opacity-35">🍭</div>
-        <div className="absolute top-1/3 right-10 text-6xl opacity-40">🍬</div>
-      </div>
+    <div className="min-h-screen relative overflow-hidden"
+         style={{
+           backgroundImage: `url(${gameBackground})`,
+           backgroundSize: "cover",
+           backgroundPosition: "center",
+           backgroundRepeat: "no-repeat"
+         }}>
+      {/* Dark overlay for better contrast */}
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       <div className="relative z-10 flex h-screen">
         {/* Left Sidebar */}
@@ -250,16 +253,16 @@ export const SlotGame = () => {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
+            className="mb-6"
           >
-            <h1 className="text-6xl font-bold text-glow" style={{
-              background: "linear-gradient(135deg, #FF6B9D 0%, #FFA500 50%, #FFD700 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
-            }}>
-              SWEET BONANZA
-            </h1>
+            <img 
+              src={loadingLogo} 
+              alt="Pluffy High Kitchen"
+              className="h-24 md:h-32 w-auto drop-shadow-2xl"
+              style={{
+                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(100,255,100,0.6))"
+              }}
+            />
           </motion.div>
 
           <GameBoard grid={grid} isSpinning={isSpinning} />
