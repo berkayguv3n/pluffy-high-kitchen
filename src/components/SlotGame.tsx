@@ -33,8 +33,8 @@ export const SlotGame = () => {
   const [lastSpinWin, setLastSpinWin] = useState(0);
   const [grid, setGrid] = useState<Cell[][]>([]);
 
-  const ROWS = 5;
-  const COLS = 6;
+  const ROWS = 6;
+  const COLS = 5;
 
   useEffect(() => {
     initializeGrid();
@@ -217,44 +217,49 @@ export const SlotGame = () => {
   };
 
   const handleCascade = async (currentGrid: Cell[][]) => {
-    // ÖNEMLİ: Grid'i KLONLAMA, direk üzerinde çalış
-    // Sadece symbol'leri değiştir, cell yapısını KORUMA!
-    
-    // Adım 1: Kazanan pozisyonlardaki sembolleri null yap
+    // Adım 1: Kazanan pozisyonları NULL yap (data-level'da)
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
         if (currentGrid[row][col].isWinning) {
-          currentGrid[row][col].symbol = null as any; // Geçici null
+          currentGrid[row][col].symbol = null as any;
           currentGrid[row][col].isWinning = false;
         }
       }
     }
 
-    // Adım 2: Her kolonda gravity uygula (sadece symbol'leri kaydır)
+    // Adım 2: Her KOLONDA gravity uygula (column-based)
     for (let col = 0; col < COLS; col++) {
-      // Bu kolondaki null olmayan sembolleri topla (ALTTAN başla)
-      const symbols: Symbol[] = [];
+      // Bu kolondaki non-null sembolleri topla (ALTTAN YUKARIYA)
+      const columnSymbols: Symbol[] = [];
       for (let row = ROWS - 1; row >= 0; row--) {
         if (currentGrid[row][col].symbol !== null) {
-          symbols.unshift(currentGrid[row][col].symbol);
+          columnSymbols.push(currentGrid[row][col].symbol);
         }
       }
       
-      // Kaç yeni symbol lazım?
-      const newNeeded = ROWS - symbols.length;
+      // Kaç boş yer var?
+      const emptyCount = ROWS - columnSymbols.length;
       
-      // Üstten yeni symboller ekle
-      for (let i = 0; i < newNeeded; i++) {
-        symbols.unshift(generateRandomSymbol(freeSpins > 0));
+      // Yeni kolonu oluştur: [yeni semboller (üst), mevcut semboller (alt)]
+      const newColumn: Symbol[] = [];
+      
+      // Üstte yeni semboller spawn et
+      for (let i = 0; i < emptyCount; i++) {
+        newColumn.push(generateRandomSymbol(freeSpins > 0));
       }
       
-      // Kolonu güncelle - sadece symbol'leri değiştir
+      // Alttan itibaren mevcut sembolleri yerleştir
+      for (let i = columnSymbols.length - 1; i >= 0; i--) {
+        newColumn.push(columnSymbols[i]);
+      }
+      
+      // Kolonu grid'e yaz - SADECE symbol'leri değiştir
       for (let row = 0; row < ROWS; row++) {
-        currentGrid[row][col].symbol = symbols[row];
+        currentGrid[row][col].symbol = newColumn[row];
       }
     }
 
-    // React'a güncellemeyi bildir
+    // React'ı güncelle
     setGrid([...currentGrid]);
 
     // Yeni win kontrolü

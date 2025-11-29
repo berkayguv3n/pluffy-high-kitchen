@@ -11,8 +11,8 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
   return (
     <div className="relative">
       
-      {/* Game grid - 5 rows x 6 columns */}
-      <div className="relative grid grid-cols-6 gap-3 p-8 z-20 bg-purple-900/40 rounded-3xl backdrop-blur-sm border-4 border-purple-700/50 shadow-2xl">
+      {/* Game grid - 6 rows x 5 columns */}
+      <div className="relative grid grid-cols-5 gap-3 p-8 z-20 bg-purple-900/40 rounded-3xl backdrop-blur-sm border-4 border-purple-700/50 shadow-2xl">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <motion.div
