@@ -16,24 +16,18 @@ export const GameBoard = ({ grid, isSpinning }: GameBoardProps) => {
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <motion.div
-              key={cell.id}
-              initial={isSpinning ? { y: -100, opacity: 0 } : false}
+              key={`${rowIndex}-${colIndex}`}
+              layout={false}
               animate={{ 
-                y: 0, 
                 opacity: cell.isWinning ? 0 : 1,
                 scale: cell.isWinning ? [1, 1.08, 0.95, 0] : 1,
               }}
               transition={{
-                y: {
-                  duration: 0.3,
-                  delay: isSpinning ? (rowIndex * 0.05) : 0,
-                  ease: [0.15, 0.85, 0.35, 1],
-                },
                 opacity: {
-                  duration: cell.isWinning ? 0.15 : 0.3,
+                  duration: cell.isWinning ? 0.15 : 0,
                 },
                 scale: {
-                  duration: 0.18,
+                  duration: cell.isWinning ? 0.18 : 0,
                   times: [0, 0.3, 0.7, 1],
                   ease: "easeOut",
                 }
