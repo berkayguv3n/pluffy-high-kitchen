@@ -1,20 +1,29 @@
 import { motion } from "framer-motion";
 import { Cell } from "../SlotGame";
+import symbolChef from "@/assets/symbol-chef.png";
+import symbolCookie from "@/assets/symbol-cookie.png";
+import symbolMuffin from "@/assets/symbol-muffin.png";
+import symbolPizza from "@/assets/symbol-pizza.png";
+import symbolSmoothie from "@/assets/symbol-smoothie.png";
+import symbolBrownie from "@/assets/symbol-brownie.png";
+import symbolSpatula from "@/assets/symbol-spatula.png";
+import symbolRolling from "@/assets/symbol-rolling.png";
+import symbolOven from "@/assets/symbol-oven.png";
 
 interface SymbolDisplayProps {
   cell: Cell;
 }
 
 const symbolData = {
-  purple: { emoji: "🟣", color: "candy-purple", glow: "280 85% 60%" },
-  grape: { emoji: "🍇", color: "candy-grape", glow: "270 75% 50%" },
-  green: { emoji: "🍏", color: "candy-green", glow: "145 70% 45%" },
-  red: { emoji: "🍎", color: "candy-red", glow: "355 85% 55%" },
-  heart: { emoji: "❤️", color: "candy-heart", glow: "350 90% 60%" },
-  plum: { emoji: "🍑", color: "candy-plum", glow: "290 65% 50%" },
-  blue: { emoji: "🔵", color: "candy-blue", glow: "210 85% 60%" },
-  banana: { emoji: "🍌", color: "candy-banana", glow: "50 100% 60%" },
-  bomb: { emoji: "💣", color: "primary", glow: "280 85% 55%" },
+  purple: { img: symbolChef, color: "candy-purple", glow: "280 85% 60%" },
+  grape: { img: symbolCookie, color: "candy-grape", glow: "270 75% 50%" },
+  green: { img: symbolMuffin, color: "candy-green", glow: "145 70% 45%" },
+  red: { img: symbolPizza, color: "candy-red", glow: "355 85% 55%" },
+  heart: { img: symbolSmoothie, color: "candy-heart", glow: "350 90% 60%" },
+  plum: { img: symbolBrownie, color: "candy-plum", glow: "290 65% 50%" },
+  blue: { img: symbolSpatula, color: "candy-blue", glow: "210 85% 60%" },
+  banana: { img: symbolRolling, color: "candy-banana", glow: "50 100% 60%" },
+  bomb: { img: symbolOven, color: "primary", glow: "145 70% 50%" },
 };
 
 export const SymbolDisplay = ({ cell }: SymbolDisplayProps) => {
@@ -45,23 +54,23 @@ export const SymbolDisplay = ({ cell }: SymbolDisplayProps) => {
         `}
         style={{
           background: cell.isWinning 
-            ? `radial-gradient(circle at 30% 30%, hsl(${data.glow} / 0.9), hsl(${data.glow} / 0.6))`
-            : `radial-gradient(circle at 30% 30%, hsl(${data.glow} / 0.85), hsl(${data.glow} / 0.5))`,
+            ? `radial-gradient(circle at 50% 50%, hsl(${data.glow} / 0.4), hsl(${data.glow} / 0.1))`
+            : `radial-gradient(circle at 50% 50%, hsl(${data.glow} / 0.3), hsl(${data.glow} / 0.05))`,
           boxShadow: cell.isWinning
-            ? `0 0 30px hsl(${data.glow} / 0.8), inset 0 4px 8px rgba(255,255,255,0.4), inset 0 -4px 8px rgba(0,0,0,0.2)`
-            : `0 4px 12px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.3), inset 0 -4px 8px rgba(0,0,0,0.15)`,
+            ? `0 0 30px hsl(${data.glow} / 0.8), inset 0 4px 8px rgba(255,255,255,0.2)`
+            : `0 4px 12px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.2)`,
         }}
       >
-        <motion.div
-          className="text-5xl md:text-6xl"
+        <motion.img
+          src={data.img}
+          alt={cell.symbol.type}
+          className="w-[80%] h-[80%] object-contain"
           animate={cell.isWinning ? { scale: [1, 1.15, 1] } : {}}
           transition={{ duration: 0.5, repeat: cell.isWinning ? Infinity : 0 }}
           style={{
             filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
           }}
-        >
-          {data.emoji}
-        </motion.div>
+        />
       </motion.div>
 
       {cell.symbol.type === "bomb" && cell.symbol.multiplier && (
