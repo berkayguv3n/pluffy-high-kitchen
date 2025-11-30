@@ -212,32 +212,53 @@ export const SlotGame = () => {
   const isMobile = useIsMobile();
 
   const [musicStarted, setMusicStarted] = useState(false);
-  const introMusicRef = useRef<HTMLAudioElement | null>(null);
+  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize sounds and auto-play intro music
+  // Initialize game music - plays throughout the entire game session
   useEffect(() => {
-    SoundManager.init();
-    
-    // Auto-play intro music on mount
+    // Create game music audio element
     const audio = new Audio("/sounds/budur.mp3");
-    audio.loop = false;
+    audio.loop = true; // Loop continuously
     audio.volume = 0.7;
-    introMusicRef.current = audio;
+    gameMusicRef.current = audio;
     
+    // Try to auto-play
     audio.play().then(() => {
       setMusicStarted(true);
     }).catch(() => {
-      // Ignore autoplay failures silently (browser policy)
+      // Browser blocked autoplay - will need user interaction
+      // We'll try again on first user interaction
     });
     
     // Cleanup on unmount
     return () => {
-      if (introMusicRef.current) {
-        introMusicRef.current.pause();
-        introMusicRef.current.currentTime = 0;
+      if (gameMusicRef.current) {
+        gameMusicRef.current.pause();
+        gameMusicRef.current.currentTime = 0;
       }
     };
   }, []);
+  
+  // Try to start music on first user interaction if autoplay was blocked
+  useEffect(() => {
+    if (musicStarted) return;
+    
+    const startMusicOnInteraction = () => {
+      if (gameMusicRef.current && !musicStarted) {
+        gameMusicRef.current.play().then(() => {
+          setMusicStarted(true);
+        }).catch(() => {});
+      }
+    };
+    
+    document.addEventListener('click', startMusicOnInteraction, { once: true });
+    document.addEventListener('touchstart', startMusicOnInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', startMusicOnInteraction);
+      document.removeEventListener('touchstart', startMusicOnInteraction);
+    };
+  }, [musicStarted]);
 
   useEffect(() => { freeSpinsRemainingRef.current = freeSpinsRemaining; }, [freeSpinsRemaining]);
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
@@ -246,21 +267,31 @@ export const SlotGame = () => {
   useEffect(() => { pendingFreeSpinsRef.current = pendingFreeSpins; }, [pendingFreeSpins]);
   useEffect(() => { balanceRef.current = balance; }, [balance]);
   
-  // Handle entering game (dismiss loading screen)
+  // Handle entering game (dismiss loading screen) - music continues playing
   const handleEnterGame = useCallback(() => {
-    // Stop intro music
-    if (introMusicRef.current) {
-      introMusicRef.current.pause();
-      introMusicRef.current.currentTime = 0;
+    // Try to start music if not already playing (for browsers that blocked autoplay)
+    if (gameMusicRef.current && !musicStarted) {
+      gameMusicRef.current.play().then(() => {
+        setMusicStarted(true);
+      }).catch(() => {});
     }
     setIsLoading(false);
-  }, []);
+  }, [musicStarted]);
   
-  // Toggle sound mute
+  // Toggle game music on/off
   const handleToggleSound = useCallback(() => {
-    const newMuted = SoundManager.toggleMute();
-    setIsSoundMuted(newMuted);
-  }, []);
+    if (gameMusicRef.current) {
+      if (isSoundMuted) {
+        // Unmute - resume playing
+        gameMusicRef.current.play().catch(() => {});
+        setIsSoundMuted(false);
+      } else {
+        // Mute - pause music
+        gameMusicRef.current.pause();
+        setIsSoundMuted(true);
+      }
+    }
+  }, [isSoundMuted]);
 
   const ROWS = 5;
   const COLS = 6;
@@ -357,11 +388,10 @@ export const SlotGame = () => {
     console.log("Current Balance (ref):", balanceRef.current);
     
     if (finalWin > 0) { 
-      // Stop any remaining spin sounds before playing win sound
-      SoundManager.stop("spin_start");
-      SoundManager.stop("reel_tumble");
-      
-      if (finalWin >= betRef.current * 20) { SoundManager.play("win_big"); } else { SoundManager.play("win_small"); }
+      // Sound effects disabled - only background music plays
+      // SoundManager.stop("spin_start");
+      // SoundManager.stop("reel_tumble");
+      // if (finalWin >= betRef.current * 20) { SoundManager.play("win_big"); } else { SoundManager.play("win_small"); }
       
       // Trigger BigWin animation for large wins (10x+ bet)
       if (finalWin >= betRef.current * 10) {
@@ -402,7 +432,7 @@ export const SlotGame = () => {
     
     // Check for pending free spins trigger
     if (pendingFreeSpinsRef.current > 0 && gameModeRef.current === "base") { 
-      SoundManager.play("free_spins_start"); 
+      // SoundManager.play("free_spins_start"); // Sound effects disabled
       setShowFreeSpinsModal(true); 
       return; 
     }
@@ -447,7 +477,7 @@ export const SlotGame = () => {
     });
 
     if (newMultipliers.length > 0) { 
-      SoundManager.play("bomb_explode"); 
+      // SoundManager.play("bomb_explode"); // Sound effects disabled
       collectedMultipliersRef.current = [...collectedMultipliersRef.current, ...newMultipliers];
     }
     
@@ -502,9 +532,9 @@ export const SlotGame = () => {
     }
     
     if (hasWins) { 
-      // Stop spin sound when win is detected to prevent overlap
-      SoundManager.stop("spin_start");
-      SoundManager.stop("reel_tumble");
+      // Sound effects disabled - only background music plays
+      // SoundManager.stop("spin_start");
+      // SoundManager.stop("reel_tumble");
       
       // Show win FX animation
       setShowWinFx(true);
@@ -513,7 +543,7 @@ export const SlotGame = () => {
       setGrid(newGrid); 
       setIsCascading(true); 
       cascadeTimeoutRef.current = setTimeout(() => { 
-        SoundManager.play("symbol_pop"); 
+        // SoundManager.play("symbol_pop"); // Sound effects disabled
         const poppingGrid = newGrid.map(row => row.map(cell => ({ ...cell, state: cell.state === "winning" ? "popping" as CellState : cell.state }))); 
         setGrid(poppingGrid); 
         cascadeTimeoutRef.current = setTimeout(() => { handleCascade(poppingGrid); }, SPIN_TIMING.popAnimationMs); 
@@ -527,7 +557,7 @@ export const SlotGame = () => {
   }, []);
 
   const handleCascade = useCallback((currentGrid: Cell[][]) => {
-    SoundManager.play("reel_tumble");
+    // SoundManager.play("reel_tumble"); // Sound effects disabled
     const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
     for (let row = 0; row < ROWS; row++) { for (let col = 0; col < COLS; col++) { if (newGrid[row][col].state === "popping") { newGrid[row][col].symbol = null; newGrid[row][col].state = "idle"; } } }
     for (let col = 0; col < COLS; col++) { let emptyBelow = 0; for (let row = ROWS - 1; row >= 0; row--) { if (newGrid[row][col].symbol === null) emptyBelow++; else if (emptyBelow > 0) { const targetRow = row + emptyBelow; newGrid[targetRow][col] = { ...newGrid[row][col], state: "falling", fallDistance: emptyBelow }; newGrid[row][col] = { symbol: null, state: "idle", id: `empty-${row}-${col}-${Date.now()}` }; } } let spawnIndex = 0; for (let row = 0; row < ROWS; row++) { if (newGrid[row][col].symbol === null) { spawnIndex++; newGrid[row][col] = { symbol: generateRandomSymbol(gameModeRef.current === "freespins"), state: "spawning", id: `spawn-${row}-${col}-${Date.now()}-${Math.random()}`, fallDistance: spawnIndex }; } } }
@@ -550,7 +580,7 @@ export const SlotGame = () => {
     isProcessingRef.current = true; 
     setIsSpinning(true); 
     spinStartTimeRef.current = performance.now(); 
-    SoundManager.play("spin_start");
+    // SoundManager.play("spin_start"); // Sound effects disabled
     
     // Reset win displays for new spin (but NOT balance - free spins don't cost anything)
     setCurrentWin(0); 
@@ -594,7 +624,7 @@ export const SlotGame = () => {
     isProcessingRef.current = true; 
     setIsSpinning(true); 
     spinStartTimeRef.current = performance.now(); 
-    SoundManager.play("spin_start");
+    // SoundManager.play("spin_start"); // Sound effects disabled
     
     // Reset win displays for new spin
     setCurrentWin(0); 
@@ -659,7 +689,7 @@ export const SlotGame = () => {
     setShowBuyBonusModal(false); 
     setPendingFreeSpins(10); 
     pendingFreeSpinsRef.current = 10;
-    SoundManager.play("free_spins_start"); 
+    // SoundManager.play("free_spins_start"); // Sound effects disabled
     setShowFreeSpinsModal(true); 
   };
   
