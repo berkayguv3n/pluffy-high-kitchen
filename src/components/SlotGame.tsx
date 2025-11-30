@@ -219,7 +219,7 @@ export const SlotGame = () => {
     SoundManager.init();
     
     // Auto-play intro music on mount
-    const audio = new Audio("/sounds/you-win-sequence-2-183949.mp3");
+    const audio = new Audio("/sounds/budur.mp3");
     audio.loop = false;
     audio.volume = 0.7;
     introMusicRef.current = audio;
