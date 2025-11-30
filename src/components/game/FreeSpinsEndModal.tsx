@@ -172,3 +172,4 @@ export const FreeSpinsEndModal = ({ open, onClose, totalWin, bet }: FreeSpinsEnd
   );
 };
 
+

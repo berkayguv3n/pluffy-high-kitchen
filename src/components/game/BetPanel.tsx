@@ -105,3 +105,4 @@ export const BetPanel = ({ bet, onIncrease, onDecrease, disabled = false }: BetP
   );
 };
 
+

@@ -8,6 +8,14 @@ import { WinDisplay } from "./game/WinDisplay";
 import { WinBreakdownPanel, WinLine, WinBreakdown } from "./game/WinBreakdownPanel";
 import { SoundManager } from "@/game/SoundManager";
 import { toast } from "sonner";
+// Import from centralized symbol config
+import { 
+  getWinMultiplier, 
+  legacyTypeToSymbolId, 
+  getSymbolDisplayName,
+  SYMBOL_LABELS,
+  LEGACY_TYPE_TO_SYMBOL_ID,
+} from "@/game/config/symbolConfig";
 import gameBackground from "@/assets/game-background.png";
 import loadingLogoNew from "@/assets/loading-logo-new.png";
 import btnSpinNormal from "@/assets/btn-spin-normal.png";
@@ -20,19 +28,21 @@ import btnRectHover from "@/assets/btn-rect-hover.png";
 import btnRectPressed from "@/assets/btn-rect-pressed.png";
 import btnTextBuyBonus from "@/assets/btn-text-buybonus.png";
 import btnTextFreeSpins from "@/assets/btn-text-freespins.png";
+// Import centralized timing config
+import { animationTimings, wait as waitMs } from "@/game/config/spinConfig";
 
-// ==================== TIMING CONFIG (Sweet Bonanza / Gates of Olympus style) ====================
-// Adjusted for better sync with music and sound effects
+// ==================== TIMING CONFIG (from spinConfig.ts) ====================
+// These values are now sourced from the centralized config
 const SPIN_TIMING = {
-  minSpinDurationMs: 1200,     // Reel drop duration ~1.2s (slower, more dramatic)
-  cascadeDelayMs: 400,         // Cascade delay ~0.4s (pause between cascades)
-  symbolDropMs: 600,           // Symbol drop animation (smoother fall)
-  symbolSpawnMs: 500,          // New symbol spawn
-  winPauseMs: 600,             // Pause after win (let player see the win)
-  winHighlightMs: 700,         // Win highlight duration (longer celebration)
-  symbolFadeOutMs: 300,        // Symbol fade out
-  popAnimationMs: 350,         // Pop animation
-  multiplierDropMs: 550,       // Multiplier drop animation
+  minSpinDurationMs: animationTimings.minSpinDurationMs,
+  cascadeDelayMs: animationTimings.cascadeDelayMs,
+  symbolDropMs: animationTimings.symbolDropMs,
+  symbolSpawnMs: animationTimings.symbolSpawnMs,
+  winPauseMs: animationTimings.winPauseMs,
+  winHighlightMs: animationTimings.winHighlightMs,
+  symbolFadeOutMs: animationTimings.symbolFadeOutMs,
+  popAnimationMs: animationTimings.popDurationMs,
+  multiplierDropMs: animationTimings.multiplierDropMs,
 };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -56,7 +66,9 @@ export type GameMode = "base" | "freespins";
 
 const BET_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
 
-const SYMBOL_LABELS: Record<string, string> = {
+// Symbol labels now imported from symbolConfig
+// Legacy labels for backward compatibility during transition
+const LEGACY_SYMBOL_LABELS: Record<string, string> = {
   purple: "Pluffy Chef", plum: "Brownie", red: "Pizza", heart: "Smoothie",
   grape: "Cookie", green: "Muffin", blue: "Spatula", banana: "Rolling Pin",
   scatter: "Oven", multiplier: "Multiplier",
@@ -268,8 +280,17 @@ export const SlotGame = () => {
   const initializeGrid = useCallback(() => { const newGrid: Cell[][] = []; for (let row = 0; row < ROWS; row++) { const newRow: Cell[] = []; for (let col = 0; col < COLS; col++) { newRow.push({ symbol: generateRandomSymbol(false), state: "idle", id: `${row}-${col}-init-${Math.random()}` }); } newGrid.push(newRow); } setGrid(newGrid); }, [generateRandomSymbol]);
   useEffect(() => { initializeGrid(); }, [initializeGrid]);
 
-  const PAYTABLE: Record<string, { "8-9": number; "10-11": number; "12+": number }> = { purple: { "8-9": 10, "10-11": 25, "12+": 50 }, plum: { "8-9": 5, "10-11": 10, "12+": 25 }, red: { "8-9": 3, "10-11": 7, "12+": 15 }, heart: { "8-9": 2, "10-11": 5, "12+": 10 }, grape: { "8-9": 1.5, "10-11": 4, "12+": 8 }, green: { "8-9": 1, "10-11": 2, "12+": 5 }, blue: { "8-9": 0.5, "10-11": 1.5, "12+": 3 }, banana: { "8-9": 0.25, "10-11": 1, "12+": 2 } };
-  const getPayoutMultiplier = (symbolType: string, count: number): number => { const payout = PAYTABLE[symbolType]; if (!payout) return 0; if (count >= 12) return payout["12+"]; if (count >= 10) return payout["10-11"]; if (count >= 8) return payout["8-9"]; return 0; };
+  // Paytable now comes from centralized symbolConfig
+  // This wrapper converts legacy types to new SymbolIds for the lookup
+  const getPayoutMultiplier = (symbolType: string, count: number): number => {
+    const symbolId = legacyTypeToSymbolId(symbolType);
+    return getWinMultiplier(symbolId, count);
+  };
+  
+  // Get display label for a symbol (supports both legacy and new types)
+  const getSymbolLabel = (symbolType: string): string => {
+    return LEGACY_SYMBOL_LABELS[symbolType] || symbolType;
+  };
 
   const endFreeSpins = useCallback(() => { 
     setShowFreeSpinsEndModal(true); 
@@ -411,7 +432,7 @@ export const SlotGame = () => {
         const breakdownLine = { 
           id: `${spinIdRef.current}-${tumbleIndexRef.current}-${symbolType}`, 
           symbolId: symbolType, 
-          symbolLabel: SYMBOL_LABELS[symbolType] || symbolType, 
+          symbolLabel: getSymbolLabel(symbolType), 
           count: data.count, 
           payout: payout 
         };

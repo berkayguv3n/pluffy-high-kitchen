@@ -1,13 +1,21 @@
 /**
- * WIN EVALUATION ENGINE - Cluster + Tumble Logic
- * Sweet Bonanza tarzı scatter-pay win detection
+ * WIN EVALUATION ENGINE
+ * Cluster-based win detection with tumble/cascade logic
+ * Sweet Bonanza style: 8+ matching symbols anywhere on grid
+ * 
+ * This module provides pure functions for win evaluation.
+ * No side effects - just takes board state and returns results.
  */
 
-import { 
-  SymbolId, 
-  getSymbolData, 
+import {
+  SymbolId,
+  getSymbolData,
   getWinMultiplier,
   generateMultiplierValue,
+  isWinningClusterSize,
+  MIN_CLUSTER_SIZE,
+  LEGACY_TYPE_TO_SYMBOL_ID,
+  getSymbolDisplayName,
 } from "../config/symbolConfig";
 
 // ============================================
@@ -22,10 +30,12 @@ export interface CellPosition {
 export interface WinningCluster {
   id: number;
   symbolId: SymbolId;
+  displayName: string;
   positions: CellPosition[];
   clusterSize: number;
-  winAmount: number;          // Bet multiplier cinsinden
-  appliedMultiplier: number;  // Bomb multiplier (başlangıçta 1)
+  multiplier: number;       // Paytable multiplier (e.g., 10x for 8 chefs)
+  winAmount: number;        // multiplier * bet
+  appliedMultiplier: number; // Bomb multiplier (starts at 1)
 }
 
 export interface MultiplierOnBoard {
@@ -34,20 +44,35 @@ export interface MultiplierOnBoard {
   value: number;
 }
 
-// Board: row-major, [row][col]
+export interface ScatterOnBoard {
+  row: number;
+  col: number;
+}
+
+// Board representation: [row][col], null = empty cell
 export type Board = (SymbolId | null)[][];
 
 export interface EvaluateWinOptions {
-  minClusterSize: number;  // Minimum 8 for Sweet Bonanza style
+  minClusterSize: number;
   betPerSpin: number;
 }
 
+export interface SingleCascadeResult {
+  hasWin: boolean;
+  clusters: WinningCluster[];
+  totalWinMultiplier: number;
+  boardAfterRemoval: Board;
+  winningPositions: CellPosition[];
+}
+
 export interface EvaluateWinResult {
+  hasWin: boolean;
   totalWin: number;
+  totalWinMultiplier: number;
   winningClusters: WinningCluster[];
   finalBoard: Board;
   scatterCount: number;
-  scatterPositions: CellPosition[];
+  scatterPositions: ScatterOnBoard[];
   multipliers: MultiplierOnBoard[];
   totalMultiplierSum: number;
   cascadeCount: number;
@@ -58,49 +83,49 @@ export interface EvaluateWinResult {
 // ============================================
 
 /**
- * Ana fonksiyon: board'daki tüm cluster'ları bulur,
- * tumble uygular, total win'i hesaplar.
+ * Full win evaluation with tumble loop
+ * Keeps cascading until no more wins
  */
 export function evaluateWinWithTumble(
   board: Board,
   options: EvaluateWinOptions
 ): EvaluateWinResult {
-  let workingBoard: Board = cloneBoard(board);
+  let workingBoard = cloneBoard(board);
   const allClusters: WinningCluster[] = [];
   let totalWin = 0;
+  let totalWinMultiplier = 0;
   let clusterId = 0;
   let cascadeCount = 0;
 
-  // Scatter ve multiplier'ları topla
+  // Find special symbols (scatters, multipliers) - they persist through cascades
   const { scatterCount, scatterPositions, multipliers } = findSpecialSymbols(workingBoard);
   const totalMultiplierSum = multipliers.reduce((sum, m) => sum + m.value, 0);
 
   // Cascade loop
   while (true) {
-    const { clusters, boardAfterRemoval } = findAndResolveClustersOnce(
-      workingBoard,
-      options,
-      clusterId
-    );
+    const result = evaluateSingleCascade(workingBoard, options, clusterId);
 
-    if (clusters.length === 0) {
+    if (!result.hasWin) {
       break;
     }
 
-    clusterId += clusters.length;
+    clusterId += result.clusters.length;
     cascadeCount++;
-    
-    // Gravity uygula
-    workingBoard = applyGravity(boardAfterRemoval);
 
-    // Bu cascade'in kazancını topla
-    const stepWin = clusters.reduce((sum, c) => sum + c.winAmount, 0);
-    totalWin += stepWin;
-    allClusters.push(...clusters);
+    // Apply gravity to get new board state
+    workingBoard = applyGravity(result.boardAfterRemoval);
+
+    // Accumulate wins
+    const cascadeWin = result.clusters.reduce((sum, c) => sum + c.winAmount, 0);
+    totalWin += cascadeWin;
+    totalWinMultiplier += result.totalWinMultiplier;
+    allClusters.push(...result.clusters);
   }
 
   return {
+    hasWin: allClusters.length > 0,
     totalWin,
+    totalWinMultiplier,
     winningClusters: allClusters,
     finalBoard: workingBoard,
     scatterCount,
@@ -112,99 +137,106 @@ export function evaluateWinWithTumble(
 }
 
 /**
- * Sadece win check (tumble olmadan)
+ * Evaluate a single cascade (no tumble loop)
+ * Useful for step-by-step animation
  */
-export function evaluateWinOnce(
-  board: Board,
-  options: EvaluateWinOptions
-): {
-  hasWin: boolean;
-  clusters: WinningCluster[];
-  totalWinMultiplier: number;
-  winningPositions: CellPosition[];
-} {
-  const { clusters } = findAndResolveClustersOnce(board, options, 0);
-  const totalWinMultiplier = clusters.reduce((sum, c) => sum + c.winAmount, 0);
-  
-  const winningPositions: CellPosition[] = [];
-  clusters.forEach(c => winningPositions.push(...c.positions));
-  
-  return {
-    hasWin: clusters.length > 0,
-    clusters,
-    totalWinMultiplier,
-    winningPositions,
-  };
-}
-
-// ============================================
-// CLUSTER FINDING
-// ============================================
-
-function findAndResolveClustersOnce(
+export function evaluateSingleCascade(
   board: Board,
   options: EvaluateWinOptions,
-  startClusterId: number
-): {
-  clusters: WinningCluster[];
-  boardAfterRemoval: Board;
-} {
+  startClusterId: number = 0
+): SingleCascadeResult {
   const numRows = board.length;
   const numCols = board[0]?.length ?? 0;
-  
-  // Her sembol türünün pozisyonlarını topla
+
+  // Count symbols by type (excluding special symbols)
   const symbolPositions = new Map<SymbolId, CellPosition[]>();
-  
+
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < numCols; c++) {
       const symbolId = board[r][c];
       if (!symbolId) continue;
-      
+
       const config = getSymbolData(symbolId);
-      
-      // Bonus ve multiplier sembolleri cluster'a dahil değil
+
+      // Skip bonus and multiplier symbols for cluster counting
       if (config.type === "bonus" || config.type === "multiplier") {
         continue;
       }
-      
-      // Wild sembolleri ayrı tutulacak
+
+      // Skip wilds as cluster starters (they join other clusters)
       if (config.isWild) {
         continue;
       }
-      
+
       const positions = symbolPositions.get(symbolId) || [];
       positions.push({ row: r, col: c });
       symbolPositions.set(symbolId, positions);
     }
   }
-  
-  // Her sembol için cluster kontrolü (8+ aynı sembol)
+
+  // Find winning clusters (8+ of same symbol)
   const clusters: WinningCluster[] = [];
   const boardAfter = cloneBoard(board);
+  const allWinningPositions: CellPosition[] = [];
   let nextId = startClusterId;
-  
+  let totalWinMultiplier = 0;
+
   symbolPositions.forEach((positions, symbolId) => {
     if (positions.length >= options.minClusterSize) {
       const multiplier = getWinMultiplier(symbolId, positions.length);
-      const winAmount = multiplier; // Bet ile çarpma SlotGame'de yapılacak
-      
+      const winAmount = multiplier * options.betPerSpin;
+
       clusters.push({
         id: nextId++,
         symbolId,
+        displayName: getSymbolDisplayName(symbolId),
         positions: [...positions],
         clusterSize: positions.length,
+        multiplier,
         winAmount,
         appliedMultiplier: 1,
       });
-      
-      // Bu sembolleri board'dan kaldır
+
+      totalWinMultiplier += multiplier;
+
+      // Mark positions for removal
       for (const pos of positions) {
         boardAfter[pos.row][pos.col] = null;
+        allWinningPositions.push(pos);
       }
     }
   });
-  
-  return { clusters, boardAfterRemoval: boardAfter };
+
+  return {
+    hasWin: clusters.length > 0,
+    clusters,
+    totalWinMultiplier,
+    boardAfterRemoval: boardAfter,
+    winningPositions: allWinningPositions,
+  };
+}
+
+/**
+ * Quick win check without full evaluation
+ */
+export function hasAnyWin(board: Board, minClusterSize: number = MIN_CLUSTER_SIZE): boolean {
+  const symbolCounts = new Map<SymbolId, number>();
+
+  for (const row of board) {
+    for (const cell of row) {
+      if (!cell) continue;
+      const config = getSymbolData(cell);
+      if (config.type === "regular") {
+        symbolCounts.set(cell, (symbolCounts.get(cell) || 0) + 1);
+      }
+    }
+  }
+
+  for (const count of symbolCounts.values()) {
+    if (count >= minClusterSize) return true;
+  }
+
+  return false;
 }
 
 // ============================================
@@ -213,36 +245,36 @@ function findAndResolveClustersOnce(
 
 function findSpecialSymbols(board: Board): {
   scatterCount: number;
-  scatterPositions: CellPosition[];
+  scatterPositions: ScatterOnBoard[];
   multipliers: MultiplierOnBoard[];
 } {
-  const scatterPositions: CellPosition[] = [];
+  const scatterPositions: ScatterOnBoard[] = [];
   const multipliers: MultiplierOnBoard[] = [];
-  
+
   const numRows = board.length;
   const numCols = board[0]?.length ?? 0;
-  
+
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < numCols; c++) {
       const symbolId = board[r][c];
       if (!symbolId) continue;
-      
+
       const config = getSymbolData(symbolId);
-      
+
       if (config.isBonus) {
         scatterPositions.push({ row: r, col: c });
       }
-      
+
       if (config.type === "multiplier") {
         multipliers.push({
           row: r,
           col: c,
-          value: generateMultiplierValue(), // Her multiplier için random değer
+          value: generateMultiplierValue(),
         });
       }
     }
   }
-  
+
   return {
     scatterCount: scatterPositions.length,
     scatterPositions,
@@ -254,15 +286,19 @@ function findSpecialSymbols(board: Board): {
 // GRAVITY / TUMBLE
 // ============================================
 
-function applyGravity(board: Board): Board {
+/**
+ * Apply gravity: symbols fall down to fill empty spaces
+ * Returns new board with gaps at top (null cells)
+ */
+export function applyGravity(board: Board): Board {
   const numRows = board.length;
   const numCols = board[0]?.length ?? 0;
   const result = cloneBoard(board);
 
   for (let c = 0; c < numCols; c++) {
     let writeRow = numRows - 1;
-    
-    // Alttan yukarı tara
+
+    // Scan from bottom to top
     for (let r = numRows - 1; r >= 0; r--) {
       if (result[r][c] !== null) {
         result[writeRow][c] = result[r][c];
@@ -272,8 +308,8 @@ function applyGravity(board: Board): Board {
         writeRow--;
       }
     }
-    
-    // Üstte kalan boşluklar null kalsın
+
+    // Fill remaining top cells with null
     for (let r = writeRow; r >= 0; r--) {
       result[r][c] = null;
     }
@@ -282,16 +318,34 @@ function applyGravity(board: Board): Board {
   return result;
 }
 
+/**
+ * Count empty cells per column (for animation)
+ */
+export function countEmptyCellsPerColumn(board: Board): number[] {
+  const numCols = board[0]?.length ?? 0;
+  const counts: number[] = [];
+
+  for (let c = 0; c < numCols; c++) {
+    let count = 0;
+    for (const row of board) {
+      if (row[c] === null) count++;
+    }
+    counts.push(count);
+  }
+
+  return counts;
+}
+
 // ============================================
 // BOARD UTILITIES
 // ============================================
 
 function cloneBoard(board: Board): Board {
-  return board.map((row) => [...row]);
+  return board.map(row => [...row]);
 }
 
 /**
- * Boş hücreleri yeni sembollerle doldur
+ * Fill empty cells with new symbols
  */
 export function fillEmptyCells(
   board: Board,
@@ -302,10 +356,10 @@ export function fillEmptyCells(
 } {
   const result = cloneBoard(board);
   const newPositions: CellPosition[] = [];
-  
+
   const numRows = board.length;
   const numCols = board[0]?.length ?? 0;
-  
+
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < numCols; c++) {
       if (result[r][c] === null) {
@@ -314,7 +368,7 @@ export function fillEmptyCells(
       }
     }
   }
-  
+
   return {
     filledBoard: result,
     newSymbolPositions: newPositions,
@@ -322,50 +376,50 @@ export function fillEmptyCells(
 }
 
 /**
- * Board'u SymbolId formatına çevir (legacy uyumluluk)
+ * Convert legacy grid format to Board
  */
-export function convertLegacyBoard(
+export function convertLegacyGridToBoard(
   legacyGrid: { symbol: { type: string } | null }[][]
 ): Board {
   return legacyGrid.map(row =>
     row.map(cell => {
       if (!cell.symbol) return null;
-      // Legacy type'ı SymbolId'ye çevir
-      const typeMap: Record<string, SymbolId> = {
-        "banana": "cupcake",
-        "blue": "cupcake",
-        "green": "pizza",
-        "grape": "brownie",
-        "heart": "brownie",
-        "red": "burger",
-        "plum": "burger",
-        "purple": "fries",
-        "scatter": "bonusOven",
-        "multiplier": "bombMultiplier",
-      };
-      return typeMap[cell.symbol.type] || "cupcake";
+      return LEGACY_TYPE_TO_SYMBOL_ID[cell.symbol.type] || null;
     })
   );
 }
 
+/**
+ * Create empty board
+ */
+export function createEmptyBoard(rows: number, cols: number): Board {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => null)
+  );
+}
+
 // ============================================
-// SCATTER TRIGGER CHECK
+// SCATTER / FREE SPINS TRIGGERS
 // ============================================
 
-export function checkScatterTrigger(scatterCount: number): {
+export interface ScatterTriggerResult {
   triggered: boolean;
   freeSpins: number;
-} {
+}
+
+export function checkScatterTrigger(scatterCount: number): ScatterTriggerResult {
   if (scatterCount >= 6) return { triggered: true, freeSpins: 20 };
   if (scatterCount >= 5) return { triggered: true, freeSpins: 15 };
   if (scatterCount >= 4) return { triggered: true, freeSpins: 10 };
   return { triggered: false, freeSpins: 0 };
 }
 
-export function checkRetrigger(scatterCount: number): {
+export interface RetriggerResult {
   retriggered: boolean;
   additionalSpins: number;
-} {
+}
+
+export function checkRetrigger(scatterCount: number): RetriggerResult {
   if (scatterCount >= 3) {
     return { retriggered: true, additionalSpins: 5 };
   }
@@ -373,15 +427,17 @@ export function checkRetrigger(scatterCount: number): {
 }
 
 // ============================================
-// WIN CATEGORY
+// WIN CATEGORIES
 // ============================================
 
 export type WinCategory = "none" | "nice" | "big" | "mega" | "insane";
 
-export function getWinCategory(winMultiplier: number): {
+export interface WinCategoryResult {
   category: WinCategory;
   label: string;
-} {
+}
+
+export function getWinCategory(winMultiplier: number): WinCategoryResult {
   if (winMultiplier >= 100) return { category: "insane", label: "INSANE WIN!" };
   if (winMultiplier >= 50) return { category: "mega", label: "MEGA WIN!" };
   if (winMultiplier >= 10) return { category: "big", label: "BIG WIN!" };
@@ -389,3 +445,33 @@ export function getWinCategory(winMultiplier: number): {
   return { category: "none", label: "" };
 }
 
+// ============================================
+// DEBUG HELPERS
+// ============================================
+
+export function debugPrintBoard(board: Board): void {
+  console.log("=== BOARD STATE ===");
+  board.forEach((row, r) => {
+    const rowStr = row.map(cell => {
+      if (!cell) return "___";
+      return cell.substring(0, 3).toUpperCase();
+    }).join(" | ");
+    console.log(`Row ${r}: ${rowStr}`);
+  });
+  console.log("==================");
+}
+
+export function debugPrintWinResult(result: EvaluateWinResult): void {
+  console.log("=== WIN RESULT ===");
+  console.log(`Has Win: ${result.hasWin}`);
+  console.log(`Total Win: ${result.totalWin}`);
+  console.log(`Total Multiplier: ${result.totalWinMultiplier}x`);
+  console.log(`Cascades: ${result.cascadeCount}`);
+  console.log(`Scatters: ${result.scatterCount}`);
+  console.log(`Multiplier Sum: ${result.totalMultiplierSum}x`);
+  console.log("Clusters:");
+  result.winningClusters.forEach(c => {
+    console.log(`  - ${c.displayName}: ${c.clusterSize} symbols = ${c.multiplier}x (${c.winAmount})`);
+  });
+  console.log("==================");
+}

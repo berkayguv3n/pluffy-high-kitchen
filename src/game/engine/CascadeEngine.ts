@@ -135,3 +135,4 @@ export function getAffectedColumns(winningCells: WinningCell[]): number[] {
   return Array.from(columns).sort((a, b) => a - b);
 }
 
+

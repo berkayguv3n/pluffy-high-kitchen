@@ -74,3 +74,4 @@ export function formatCompact(credits: number): string {
   return formatAmount(credits);
 }
 
+

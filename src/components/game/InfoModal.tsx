@@ -1,311 +1,518 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
+
+// Import symbol images
+import symbolChef from "@/assets/symbol-chef.png";
+import symbolBrownie from "@/assets/symbol-brownie.png";
+import symbolPizza from "@/assets/symbol-pizza.png";
+import symbolSmoothie from "@/assets/symbol-smoothie.png";
+import symbolCookie from "@/assets/symbol-cookie.png";
+import symbolMuffin from "@/assets/symbol-muffin.png";
+import symbolSpatula from "@/assets/symbol-spatula.png";
+import symbolRolling from "@/assets/symbol-rolling.png";
+import symbolOven from "@/assets/symbol-oven.png";
+
+// Import info panel assets (these should be added to assets folder)
+// For now, we'll create styled versions that match the uploaded images
 
 interface InfoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+type TabType = "game" | "paytable" | "rules" | "explanation";
+
+// Styled title component to match the uploaded image style
+const StyledTitle = ({ text, color = "green" }: { text: string; color?: "green" | "purple" }) => (
+  <div 
+    className="relative inline-block px-6 py-2"
+    style={{
+      background: color === "green" 
+        ? "linear-gradient(180deg, #a8e6a3 0%, #7bc96f 30%, #5eb454 70%, #4a9a42 100%)"
+        : "linear-gradient(180deg, #d4a8e6 0%, #b67bc9 30%, #9a5eb4 70%, #824a9a 100%)",
+      borderRadius: "12px",
+      border: "3px solid #fff",
+      boxShadow: "0 4px 0 rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3)",
+    }}
+  >
+    <span 
+      className="font-black text-2xl md:text-3xl tracking-wide"
+      style={{
+        color: "#fff",
+        textShadow: "2px 2px 0 rgba(0,0,0,0.3), 0 0 10px rgba(255,255,255,0.3)",
+        letterSpacing: "0.05em",
+      }}
+    >
+      {text}
+    </span>
+  </div>
+);
+
+// Tab button component
+const TabButton = ({ 
+  active, 
+  onClick, 
+  children 
+}: { 
+  active: boolean; 
+  onClick: () => void; 
+  children: React.ReactNode;
+}) => (
+  <motion.button
+    onClick={onClick}
+    className={`relative transition-all ${active ? "scale-105" : "scale-100 opacity-80 hover:opacity-100"}`}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+  >
+    {children}
+    {active && (
+      <motion.div
+        layoutId="activeTab"
+        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-white rounded-full"
+        style={{ boxShadow: "0 0 10px rgba(255,255,255,0.8)" }}
+      />
+    )}
+  </motion.button>
+);
+
 export const InfoModal = ({ open, onOpenChange }: InfoModalProps) => {
-  const [activeTab, setActiveTab] = useState<"paytable" | "paylines">("paytable");
+  const [activeTab, setActiveTab] = useState<TabType>("game");
+
+  const tabs: { id: TabType; label: string }[] = [
+    { id: "game", label: "GAME" },
+    { id: "paytable", label: "PAYTABLE" },
+    { id: "rules", label: "RULES" },
+    { id: "explanation", label: "INFO" },
+  ];
+
+  // Symbol data with actual images
+  const symbols = [
+    { image: symbolChef, name: "Pluffy Chef", tier: "Premium", color: "#ffd700", payouts: { 8: "10x", 10: "25x", 12: "50x" } },
+    { image: symbolBrownie, name: "Brownie", tier: "High", color: "#ff8c00", payouts: { 8: "5x", 10: "10x", 12: "25x" } },
+    { image: symbolPizza, name: "Pizza", tier: "High", color: "#ff6347", payouts: { 8: "3x", 10: "7x", 12: "15x" } },
+    { image: symbolSmoothie, name: "Smoothie", tier: "Mid", color: "#ff69b4", payouts: { 8: "2x", 10: "5x", 12: "10x" } },
+    { image: symbolCookie, name: "Cookie", tier: "Mid", color: "#deb887", payouts: { 8: "1.5x", 10: "4x", 12: "8x" } },
+    { image: symbolMuffin, name: "Muffin", tier: "Low", color: "#98fb98", payouts: { 8: "1x", 10: "2x", 12: "5x" } },
+    { image: symbolSpatula, name: "Spatula", tier: "Low", color: "#87ceeb", payouts: { 8: "0.5x", 10: "1.5x", 12: "3x" } },
+    { image: symbolRolling, name: "Rolling Pin", tier: "Low", color: "#dda0dd", payouts: { 8: "0.25x", 10: "1x", 12: "2x" } },
+    { image: symbolOven, name: "Bonus Oven", tier: "Special", color: "#7dff70", payouts: { 4: "10 FS", 5: "15 FS", 6: "20 FS" } },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[95vw] h-[90vh] p-0 bg-gradient-to-br from-purple-900/98 via-purple-800/98 to-purple-900/98 border-4 border-green-400/80 rounded-3xl overflow-hidden shadow-2xl">
+      <DialogContent 
+        className="max-w-4xl w-[95vw] max-h-[90vh] p-0 bg-transparent border-0 overflow-visible"
+        style={{ background: "none" }}
+      >
         <DialogTitle className="sr-only">Game Information</DialogTitle>
         
-        {/* Close Button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute top-6 right-6 z-50 w-14 h-14 rounded-full bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center shadow-xl hover:scale-110 border-2 border-green-300"
+        {/* Main Frame Container - Styled like the uploaded frame image */}
+        <div 
+          className="relative w-full"
+          style={{
+            background: "linear-gradient(180deg, #5a4a3a 0%, #4a3a2a 100%)",
+            borderRadius: "16px",
+            padding: "8px",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+          }}
         >
-          <X className="w-8 h-8 text-purple-900 font-bold" strokeWidth={3} />
-        </button>
+          {/* Inner gray content area */}
+          <div 
+            className="relative w-full overflow-hidden"
+            style={{
+              background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 50%, #2a2a2a 100%)",
+              borderRadius: "12px",
+              minHeight: "500px",
+            }}
+          >
+            {/* Decorative slime corners */}
+            <div className="absolute -top-4 -left-4 w-24 h-24 pointer-events-none z-20">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <path 
+                  d="M10,50 Q0,30 20,20 Q40,10 50,30 Q60,10 70,25 Q85,5 90,35 Q95,50 80,55 L30,80 Q10,70 10,50" 
+                  fill="url(#slimeGradient)"
+                  stroke="#4a9a42"
+                  strokeWidth="2"
+                />
+                <defs>
+                  <linearGradient id="slimeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#a8e6a3" />
+                    <stop offset="50%" stopColor="#7bc96f" />
+                    <stop offset="100%" stopColor="#5eb454" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            
+            <div className="absolute -top-4 -right-4 w-24 h-24 pointer-events-none z-20" style={{ transform: "scaleX(-1)" }}>
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <path 
+                  d="M10,50 Q0,30 20,20 Q40,10 50,30 Q60,10 70,25 Q85,5 90,35 Q95,50 80,55 L30,80 Q10,70 10,50" 
+                  fill="url(#slimeGradient2)"
+                  stroke="#4a9a42"
+                  strokeWidth="2"
+                />
+                <defs>
+                  <linearGradient id="slimeGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#a8e6a3" />
+                    <stop offset="50%" stopColor="#7bc96f" />
+                    <stop offset="100%" stopColor="#5eb454" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            
+            <div className="absolute -bottom-4 -left-4 w-24 h-24 pointer-events-none z-20" style={{ transform: "scaleY(-1)" }}>
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <path 
+                  d="M10,50 Q0,30 20,20 Q40,10 50,30 Q60,10 70,25 Q85,5 90,35 Q95,50 80,55 L30,80 Q10,70 10,50" 
+                  fill="url(#slimeGradient3)"
+                  stroke="#4a9a42"
+                  strokeWidth="2"
+                />
+                <defs>
+                  <linearGradient id="slimeGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#a8e6a3" />
+                    <stop offset="50%" stopColor="#7bc96f" />
+                    <stop offset="100%" stopColor="#5eb454" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            
+            <div className="absolute -bottom-4 -right-4 w-24 h-24 pointer-events-none z-20" style={{ transform: "scale(-1)" }}>
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <path 
+                  d="M10,50 Q0,30 20,20 Q40,10 50,30 Q60,10 70,25 Q85,5 90,35 Q95,50 80,55 L30,80 Q10,70 10,50" 
+                  fill="url(#slimeGradient4)"
+                  stroke="#4a9a42"
+                  strokeWidth="2"
+                />
+                <defs>
+                  <linearGradient id="slimeGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#a8e6a3" />
+                    <stop offset="50%" stopColor="#7bc96f" />
+                    <stop offset="100%" stopColor="#5eb454" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
 
-        {/* Header with Tabs */}
-        <div className="relative pt-10 pb-6 px-8 bg-gradient-to-b from-green-400/20 to-transparent border-b-2 border-green-400/30">
-          <div className="flex gap-6 justify-center">
-            <motion.button
-              onClick={() => setActiveTab("paytable")}
-              className={`px-12 py-4 rounded-2xl font-black text-2xl transition-all ${
-                activeTab === "paytable"
-                  ? "bg-green-400 text-purple-900 shadow-xl scale-105"
-                  : "bg-purple-700/60 text-white hover:bg-purple-600/60"
-              }`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            {/* Close Button */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full transition-all flex items-center justify-center hover:scale-110"
+              style={{
+                background: "linear-gradient(180deg, #ff6b6b 0%, #ee5a5a 50%, #cc4444 100%)",
+                border: "2px solid #fff",
+                boxShadow: "0 3px 0 rgba(0,0,0,0.3), 0 4px 15px rgba(0,0,0,0.3)",
+              }}
             >
-              PAYTABLE
-            </motion.button>
-            <motion.button
-              onClick={() => setActiveTab("paylines")}
-              className={`px-12 py-4 rounded-2xl font-black text-2xl transition-all ${
-                activeTab === "paylines"
-                  ? "bg-green-400 text-purple-900 shadow-xl scale-105"
-                  : "bg-purple-700/60 text-white hover:bg-purple-600/60"
-              }`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              PAYLINES
-            </motion.button>
-          </div>
-        </div>
+              <X className="w-5 h-5 text-white" strokeWidth={3} />
+            </button>
 
-        {/* Content */}
-        <div className="px-10 py-8 overflow-y-auto h-full">
-          {activeTab === "paytable" ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-8"
-            >
-              {/* Main Title */}
-              <div className="text-center mb-6">
-                <h2 className="text-6xl font-black text-green-400 mb-2 drop-shadow-2xl"
-                    style={{
-                      textShadow: "0 0 30px rgba(100,255,100,0.6), 0 4px 12px rgba(0,0,0,0.8)"
-                    }}>
-                  PAYTABLE
-                </h2>
-                <div className="h-1 w-64 mx-auto bg-gradient-to-r from-transparent via-green-400 to-transparent rounded-full"></div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                {/* Game Info */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-purple-800/60 rounded-3xl p-8 border-3 border-green-400/40 backdrop-blur-sm shadow-xl"
+            {/* Tab Navigation */}
+            <div className="flex justify-center gap-3 pt-6 pb-4 px-4 flex-wrap">
+              {tabs.map((tab) => (
+                <TabButton
+                  key={tab.id}
+                  active={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                 >
-                  <h3 className="text-3xl font-black text-green-400 mb-6 text-center">GAME INFO</h3>
-                  <div className="space-y-3 text-white text-xl">
-                    <div className="flex justify-between items-center py-2 border-b border-green-400/20">
-                      <span className="text-green-300 font-bold">Grid:</span>
-                      <span className="font-semibold">4x5 (20 symbols)</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-green-400/20">
-                      <span className="text-green-300 font-bold">Paylines:</span>
-                      <span className="font-semibold">40 fixed lines</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-green-400/20">
-                      <span className="text-green-300 font-bold">Pay Direction:</span>
-                      <span className="font-semibold">Left → Right</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-green-400/20">
-                      <span className="text-green-300 font-bold">Volatility:</span>
-                      <span className="font-semibold">Medium-High</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-green-400/20">
-                      <span className="text-green-300 font-bold">RTP:</span>
-                      <span className="font-semibold">96.4%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-green-300 font-bold">Max Win:</span>
-                      <span className="font-semibold">3,500x bet</span>
-                    </div>
-                  </div>
-                </motion.div>
+                  <StyledTitle text={tab.label} color={activeTab === tab.id ? "green" : "purple"} />
+                </TabButton>
+              ))}
+            </div>
 
-                {/* Features */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="bg-purple-800/60 rounded-3xl p-8 border-3 border-green-400/40 backdrop-blur-sm shadow-xl"
-                >
-                  <h3 className="text-3xl font-black text-green-400 mb-6 text-center">FEATURES</h3>
-                  <div className="space-y-4 text-white text-lg">
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">🎰 Bonus Feature:</div>
-                      <div className="text-base">Overbaked Spins (free spins + random wild rain)</div>
-                    </div>
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">💨 Random Event:</div>
-                      <div className="text-base">Puff Puff Wild (triggers randomly)</div>
-                    </div>
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">💰 Bonus Buy:</div>
-                      <div className="text-base">100x bet - Instant feature trigger</div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* How to Win */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-purple-800/60 rounded-3xl p-8 border-3 border-green-400/40 backdrop-blur-sm shadow-xl"
-                >
-                  <h3 className="text-3xl font-black text-green-400 mb-6 text-center">HOW TO WIN</h3>
-                  <div className="space-y-4 text-white text-lg">
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">✨ 8+ Matching Symbols</div>
-                      <div className="text-base">Anywhere on the grid wins!</div>
-                    </div>
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">🔄 Cascade Wins</div>
-                      <div className="text-base">Winning symbols stay, new ones drop</div>
-                    </div>
-                    <div className="bg-purple-900/50 rounded-xl p-4 border border-green-400/20">
-                      <div className="text-green-300 font-bold mb-2">💣 4+ Bomb Scatters</div>
-                      <div className="text-base">Triggers 10 free spins!</div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Symbols Table */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-purple-800/60 rounded-3xl p-8 border-3 border-green-400/40 backdrop-blur-sm shadow-xl"
-              >
-                <h3 className="text-4xl font-black text-green-400 mb-8 text-center">SYMBOLS & PAYOUTS</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-white border-separate border-spacing-y-2">
-                    <thead>
-                      <tr className="bg-purple-900/70">
-                        <th className="text-left py-4 px-6 text-green-300 font-black text-xl rounded-l-xl">SYMBOL</th>
-                        <th className="text-left py-4 px-4 text-green-300 font-black text-xl">TYPE</th>
-                        <th className="text-center py-4 px-4 text-green-300 font-black text-xl">3 IN ROW</th>
-                        <th className="text-center py-4 px-4 text-green-300 font-black text-xl">4 IN ROW</th>
-                        <th className="text-center py-4 px-4 text-green-300 font-black text-xl rounded-r-xl">5 IN ROW</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { symbol: "👨‍🍳", name: "Pluffy Chef", type: "Premium", win3: "5x", win4: "25x", win5: "100x", color: "yellow" },
-                        { symbol: "🍫", name: "Brownie Tray", type: "High", win3: "3x", win4: "15x", win5: "70x", color: "orange" },
-                        { symbol: "🍕", name: "Pizza Slice", type: "High", win3: "2.5x", win4: "12x", win5: "60x", color: "orange" },
-                        { symbol: "🥤", name: "Smoothie Cup", type: "Mid", win3: "2x", win4: "10x", win5: "50x", color: "blue" },
-                        { symbol: "🍪", name: "Cookie Jar", type: "Mid", win3: "1.5x", win4: "8x", win5: "35x", color: "blue" },
-                        { symbol: "🧁", name: "Muffin", type: "Low", win3: "5x", win4: "20x", win5: "20x", color: "gray" },
-                        { symbol: "🍳", name: "Spatula", type: "Low", win3: "0.8x", win4: "15x", win5: "15x", color: "gray" },
-                        { symbol: "🍌", name: "Rolling Pin", type: "Low", win3: "0.5x", win4: "10x", win5: "10x", color: "gray" },
-                        { symbol: "💥", name: "Oven Scatter", type: "Bonus", win3: "Trigger", win4: "bonus", win5: "spins", color: "green" },
-                      ].map((item, index) => (
-                        <motion.tr
-                          key={index}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + index * 0.05 }}
-                          className="bg-purple-900/40 hover:bg-purple-700/50 transition-colors"
-                        >
-                          <td className="py-4 px-6 rounded-l-xl">
-                            <div className="flex items-center gap-4">
-                              <span className="text-5xl">{item.symbol}</span>
-                              <span className="font-bold text-lg">{item.name}</span>
+            {/* Content Area */}
+            <div className="px-6 pb-6 overflow-y-auto max-h-[calc(90vh-150px)]">
+              <AnimatePresence mode="wait">
+                {/* GAME Tab */}
+                {activeTab === "game" && (
+                  <motion.div
+                    key="game"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Game Info Card */}
+                      <div 
+                        className="rounded-xl p-5"
+                        style={{
+                          background: "linear-gradient(180deg, rgba(122,255,112,0.15) 0%, rgba(90,180,84,0.1) 100%)",
+                          border: "2px solid rgba(122,255,112,0.3)",
+                        }}
+                      >
+                        <h3 className="text-xl font-black text-green-400 mb-4">GAME INFO</h3>
+                        <div className="space-y-2 text-white">
+                          {[
+                            { label: "Grid Size", value: "5 × 6 (30 symbols)" },
+                            { label: "Pay Type", value: "Scatter Pay (8+)" },
+                            { label: "Volatility", value: "High" },
+                            { label: "RTP", value: "96.5%" },
+                            { label: "Max Win", value: "5,000× bet" },
+                          ].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center py-1 border-b border-green-400/20">
+                              <span className="text-green-300 text-sm">{item.label}</span>
+                              <span className="font-bold text-sm">{item.value}</span>
                             </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-4 py-2 rounded-full text-base font-black ${
-                              item.color === "yellow" ? "bg-yellow-500/30 text-yellow-300 border border-yellow-400/50" :
-                              item.color === "orange" ? "bg-orange-500/30 text-orange-300 border border-orange-400/50" :
-                              item.color === "blue" ? "bg-blue-500/30 text-blue-300 border border-blue-400/50" :
-                              item.color === "green" ? "bg-green-500/30 text-green-300 border border-green-400/50" :
-                              "bg-gray-500/30 text-gray-300 border border-gray-400/50"
-                            }`}>
-                              {item.type}
-                            </span>
-                          </td>
-                          <td className="text-center py-4 px-4 text-2xl font-black text-green-300">{item.win3}</td>
-                          <td className="text-center py-4 px-4 text-2xl font-black text-green-300">{item.win4}</td>
-                          <td className="text-center py-4 px-4 text-2xl font-black text-green-300 rounded-r-xl">{item.win5}</td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-8"
-            >
-              {/* Paylines Title */}
-              <div className="text-center mb-8">
-                <h2 className="text-6xl font-black text-green-400 mb-4 drop-shadow-2xl"
-                    style={{
-                      textShadow: "0 0 30px rgba(100,255,100,0.6), 0 4px 12px rgba(0,0,0,0.8)"
-                    }}>
-                  PAYLINES
-                </h2>
-                <div className="h-1 w-64 mx-auto bg-gradient-to-r from-transparent via-green-400 to-transparent rounded-full mb-6"></div>
-                <p className="text-white text-2xl font-bold leading-relaxed">
-                  All symbols pay from <span className="text-green-400">left to right</span> on selected lines,
-                  <br />
-                  starting from the <span className="text-green-400">leftmost reel</span>, except for bonus symbols.
-                  <br />
-                  <span className="text-yellow-400 font-black text-3xl mt-2 block">
-                    Line wins are multiplied by the bet value!
-                  </span>
-                </p>
-              </div>
-
-              {/* Paylines Grid - 3 rows of 5 */}
-              <div className="grid grid-cols-5 gap-6">
-                {Array.from({ length: 15 }, (_, i) => {
-                  // Define payline patterns
-                  const patterns = [
-                    [0, 0, 0, 0, 0], // Line 1: Top
-                    [1, 1, 1, 1, 1], // Line 2: Middle
-                    [2, 2, 2, 2, 2], // Line 3: Bottom
-                    [0, 1, 2, 1, 0], // Line 4: V
-                    [2, 1, 0, 1, 2], // Line 5: ^
-                    [0, 0, 1, 0, 0], // Line 6
-                    [2, 2, 1, 2, 2], // Line 7
-                    [1, 0, 0, 0, 1], // Line 8
-                    [1, 2, 2, 2, 1], // Line 9
-                    [1, 0, 1, 0, 1], // Line 10
-                    [1, 2, 1, 2, 1], // Line 11
-                    [0, 1, 1, 1, 0], // Line 12
-                    [2, 1, 1, 1, 2], // Line 13
-                    [0, 1, 0, 1, 0], // Line 14
-                    [2, 1, 2, 1, 2], // Line 15
-                  ];
-                  
-                  const pattern = patterns[i];
-                  
-                  return (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="bg-purple-800/60 rounded-2xl p-6 border-3 border-green-400/40 hover:border-green-400/80 hover:shadow-2xl hover:shadow-green-400/30 transition-all cursor-pointer backdrop-blur-sm"
-                    >
-                      <div className="text-green-400 text-3xl font-black text-center mb-4 drop-shadow-lg">
-                        {i + 1}
+                          ))}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        {[0, 1, 2].map((row) => (
-                          <div key={row} className="flex gap-2 justify-center">
-                            {pattern.map((cellRow, colIndex) => (
-                              <div
-                                key={colIndex}
-                                className={`w-10 h-10 rounded-lg transition-all ${
-                                  cellRow === row
-                                    ? "bg-green-400 shadow-lg shadow-green-400/60 scale-110"
-                                    : "bg-gray-700/40"
-                                }`}
-                              />
+
+                      {/* Features Card */}
+                      <div 
+                        className="rounded-xl p-5"
+                        style={{
+                          background: "linear-gradient(180deg, rgba(122,255,112,0.15) 0%, rgba(90,180,84,0.1) 100%)",
+                          border: "2px solid rgba(122,255,112,0.3)",
+                        }}
+                      >
+                        <h3 className="text-xl font-black text-green-400 mb-4">FEATURES</h3>
+                        <div className="space-y-3 text-white text-sm">
+                          <div className="flex items-start gap-2">
+                            <span className="text-green-400">🎰</span>
+                            <div>
+                              <span className="font-bold text-green-300">Tumble Mechanic:</span>
+                              <span className="text-gray-300"> Winning symbols explode, new ones fall</span>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-green-400">🔥</span>
+                            <div>
+                              <span className="font-bold text-green-300">Free Spins:</span>
+                              <span className="text-gray-300"> 4+ Ovens trigger bonus round</span>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-green-400">💣</span>
+                            <div>
+                              <span className="font-bold text-green-300">Multipliers:</span>
+                              <span className="text-gray-300"> ×2 to ×100 in free spins</span>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-green-400">💰</span>
+                            <div>
+                              <span className="font-bold text-green-300">Buy Bonus:</span>
+                              <span className="text-gray-300"> 100× bet for instant free spins</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* PAYTABLE Tab */}
+                {activeTab === "paytable" && (
+                  <motion.div
+                    key="paytable"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-3 gap-3">
+                      {symbols.map((symbol, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="rounded-xl p-3 text-center"
+                          style={{
+                            background: "linear-gradient(180deg, rgba(60,60,60,0.9) 0%, rgba(40,40,40,0.9) 100%)",
+                            border: `2px solid ${symbol.color}40`,
+                          }}
+                        >
+                          <img 
+                            src={symbol.image} 
+                            alt={symbol.name}
+                            className="w-16 h-16 mx-auto mb-2 object-contain"
+                          />
+                          <div className="text-white font-bold text-xs mb-1">{symbol.name}</div>
+                          <div 
+                            className="text-xs px-2 py-0.5 rounded-full inline-block mb-2"
+                            style={{ 
+                              background: `${symbol.color}30`,
+                              color: symbol.color,
+                              border: `1px solid ${symbol.color}50`,
+                            }}
+                          >
+                            {symbol.tier}
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            {Object.entries(symbol.payouts).map(([count, payout]) => (
+                              <div key={count} className="flex justify-between text-gray-300">
+                                <span>{count}×</span>
+                                <span className="text-green-400 font-bold">{payout}</span>
+                              </div>
                             ))}
                           </div>
-                        ))}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* RULES Tab */}
+                {activeTab === "rules" && (
+                  <motion.div
+                    key="rules"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-4"
+                  >
+                    <div 
+                      className="rounded-xl p-5"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(122,255,112,0.15) 0%, rgba(90,180,84,0.1) 100%)",
+                        border: "2px solid rgba(122,255,112,0.3)",
+                      }}
+                    >
+                      <h3 className="text-xl font-black text-green-400 mb-4">HOW TO WIN</h3>
+                      <div className="space-y-3 text-white text-sm">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">✨</span>
+                          <div>
+                            <span className="font-bold text-green-300">8+ Matching Symbols:</span>
+                            <span className="text-gray-300"> Land 8 or more of the same symbol anywhere on the grid to win!</span>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🔄</span>
+                          <div>
+                            <span className="font-bold text-green-300">Tumble Feature:</span>
+                            <span className="text-gray-300"> After a win, winning symbols disappear and new ones fall from above. This continues until no more wins occur.</span>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🎯</span>
+                          <div>
+                            <span className="font-bold text-green-300">Scatter Pays:</span>
+                            <span className="text-gray-300"> Symbols don't need to be connected - they just need to appear anywhere on the reels.</span>
+                          </div>
+                        </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
+                    </div>
+
+                    <div 
+                      className="rounded-xl p-5"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(255,200,100,0.15) 0%, rgba(200,150,80,0.1) 100%)",
+                        border: "2px solid rgba(255,200,100,0.3)",
+                      }}
+                    >
+                      <h3 className="text-xl font-black text-yellow-400 mb-4">FREE SPINS</h3>
+                      <div className="space-y-2 text-white text-sm">
+                        <div className="flex justify-between py-1 border-b border-yellow-400/20">
+                          <span>4 Scatter Symbols</span>
+                          <span className="text-yellow-400 font-bold">10 Free Spins</span>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-yellow-400/20">
+                          <span>5 Scatter Symbols</span>
+                          <span className="text-yellow-400 font-bold">15 Free Spins</span>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-yellow-400/20">
+                          <span>6 Scatter Symbols</span>
+                          <span className="text-yellow-400 font-bold">20 Free Spins</span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                          <span>3+ Scatters (Retrigger)</span>
+                          <span className="text-yellow-400 font-bold">+5 Free Spins</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* EXPLANATION/INFO Tab */}
+                {activeTab === "explanation" && (
+                  <motion.div
+                    key="explanation"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-4"
+                  >
+                    <div 
+                      className="rounded-xl p-5"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(122,255,112,0.15) 0%, rgba(90,180,84,0.1) 100%)",
+                        border: "2px solid rgba(122,255,112,0.3)",
+                      }}
+                    >
+                      <h3 className="text-xl font-black text-green-400 mb-4">MULTIPLIER BOMBS</h3>
+                      <div className="text-white text-sm space-y-2">
+                        <p className="text-gray-300">
+                          During Free Spins, Multiplier Bombs can appear on the reels. When a winning tumble sequence ends, 
+                          all visible multipliers are added together and applied to your total win!
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 mt-3">
+                          {["×2", "×3", "×5", "×10", "×25", "×50", "×100"].map((mult, i) => (
+                            <div 
+                              key={i}
+                              className="text-center py-2 rounded-lg font-bold"
+                              style={{
+                                background: `rgba(255,215,0,${0.1 + i * 0.05})`,
+                                border: "1px solid rgba(255,215,0,0.3)",
+                                color: "#ffd700",
+                              }}
+                            >
+                              {mult}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="rounded-xl p-5"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(255,100,100,0.15) 0%, rgba(200,80,80,0.1) 100%)",
+                        border: "2px solid rgba(255,100,100,0.3)",
+                      }}
+                    >
+                      <h3 className="text-xl font-black text-red-400 mb-4">BUY BONUS</h3>
+                      <div className="text-white text-sm space-y-2">
+                        <p className="text-gray-300">
+                          Don't want to wait for scatters? You can instantly trigger 10 Free Spins by paying 100× your current bet!
+                        </p>
+                        <div className="bg-red-500/20 rounded-lg p-3 mt-3 border border-red-400/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-red-300 font-bold">Buy Bonus Cost:</span>
+                            <span className="text-white font-black text-lg">100× BET</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="rounded-xl p-5"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(100,150,255,0.15) 0%, rgba(80,120,200,0.1) 100%)",
+                        border: "2px solid rgba(100,150,255,0.3)",
+                      }}
+                    >
+                      <h3 className="text-xl font-black text-blue-400 mb-4">RESPONSIBLE GAMING</h3>
+                      <div className="text-white text-sm space-y-2">
+                        <p className="text-gray-300">
+                          This game is for entertainment purposes only. Please play responsibly and within your limits.
+                          The theoretical Return to Player (RTP) is 96.5%.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
