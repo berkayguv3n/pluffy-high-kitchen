@@ -16,6 +16,7 @@ export type SoundName =
 
 class SoundManagerClass {
   private sounds = new Map<SoundName, HTMLAudioElement>();
+  private activeSounds = new Map<SoundName, HTMLAudioElement[]>(); // Track playing sounds
   private muted = false;
   private volume = 0.5;
   private musicVolume = 0.3;
@@ -95,10 +96,73 @@ class SoundManagerClass {
       const clone = audio.cloneNode() as HTMLAudioElement;
       clone.volume = this.volume;
       clone.play().catch(() => {});
+      
+      // Track active sounds for stopping later
+      const activeList = this.activeSounds.get(name) || [];
+      activeList.push(clone);
+      this.activeSounds.set(name, activeList);
+      
+      // Remove from active list when finished
+      clone.addEventListener('ended', () => {
+        const list = this.activeSounds.get(name);
+        if (list) {
+          const index = list.indexOf(clone);
+          if (index > -1) list.splice(index, 1);
+        }
+      });
     } catch (e) {
       audio.currentTime = 0;
       audio.play().catch(() => {});
     }
+  }
+
+  // Stop a specific sound type
+  stop(name: SoundName) {
+    const activeList = this.activeSounds.get(name);
+    if (activeList) {
+      activeList.forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      this.activeSounds.set(name, []);
+    }
+  }
+
+  // Stop all sounds except loading music
+  stopAll() {
+    this.activeSounds.forEach((list, name) => {
+      if (name !== "loading_music") {
+        list.forEach(audio => {
+          audio.pause();
+          audio.currentTime = 0;
+        });
+      }
+    });
+    this.activeSounds.clear();
+  }
+
+  // Fade out a specific sound
+  fadeOut(name: SoundName, duration: number = 300) {
+    const activeList = this.activeSounds.get(name);
+    if (!activeList || activeList.length === 0) return;
+    
+    const fadeStep = 50;
+    const steps = duration / fadeStep;
+    
+    activeList.forEach(audio => {
+      const volumeStep = audio.volume / steps;
+      const fadeInterval = setInterval(() => {
+        if (audio.volume > volumeStep) {
+          audio.volume = Math.max(0, audio.volume - volumeStep);
+        } else {
+          clearInterval(fadeInterval);
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      }, fadeStep);
+    });
+    
+    this.activeSounds.set(name, []);
   }
 
   // Start loading/intro music

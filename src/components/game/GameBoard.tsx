@@ -11,13 +11,13 @@ interface GameBoardProps {
 const CELL_SIZE = 95;
 const GAP = 8;
 
-// Animation timing constants - FASTER for snappy feel
+// Animation timing constants - Slower for better music sync
 const ANIM_TIMING = {
-  symbolFadeOutMs: 150,       // Fast fade out
-  symbolDropMs: 250,          // Fast drop
-  symbolSpawnMs: 200,         // Fast spawn
-  winGlowMs: 350,             // Fast glow
-  initialDropMs: 300,         // Fast initial drop
+  symbolFadeOutMs: 250,       // Smooth fade out
+  symbolDropMs: 450,          // Slower, more satisfying drop
+  symbolSpawnMs: 400,         // Slower spawn animation
+  winGlowMs: 500,             // Longer glow for celebration
+  initialDropMs: 500,         // Slower initial drop
 };
 
 // Dust/Cloud particle component for falling effect
@@ -26,19 +26,19 @@ const DustParticle = ({ delay, isFreeSpinMode }: { delay: number; isFreeSpinMode
     className="absolute rounded-full pointer-events-none"
     initial={{ opacity: 0, scale: 0.3, y: 0 }}
     animate={{ 
-      opacity: [0, 0.5, 0],
-      scale: [0.3, 1.2, 0.6],
-      y: [0, 20, 35],
-      x: [(Math.random() - 0.5) * 25, (Math.random() - 0.5) * 40],
+      opacity: [0, 0.6, 0],
+      scale: [0.3, 1.4, 0.8],
+      y: [0, 25, 45],
+      x: [(Math.random() - 0.5) * 30, (Math.random() - 0.5) * 50],
     }}
     transition={{ 
-      duration: 0.4, // Faster dust
+      duration: 0.6, // Slower dust for smoother feel
       delay: delay,
       ease: "easeOut",
     }}
     style={{
-      width: 8 + Math.random() * 8,
-      height: 8 + Math.random() * 8,
+      width: 10 + Math.random() * 10,
+      height: 10 + Math.random() * 10,
       background: isFreeSpinMode
         ? `radial-gradient(circle, rgba(74,222,128,0.6) 0%, transparent 70%)`
         : `radial-gradient(circle, rgba(168,85,247,0.5) 0%, transparent 70%)`,
@@ -68,16 +68,16 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
           transition: {
             y: {
               duration: ANIM_TIMING.symbolSpawnMs / 1000,
-              delay: colIndex * 0.02 + (cell.fallDistance || 1) * 0.03, // Faster stagger
+              delay: colIndex * 0.05 + (cell.fallDistance || 1) * 0.06, // Slower stagger for music sync
               ease: [0.22, 1, 0.36, 1],
             },
             opacity: { 
-              duration: 0.1,
-              delay: colIndex * 0.02,
+              duration: 0.15,
+              delay: colIndex * 0.05,
             },
             scale: {
               duration: ANIM_TIMING.symbolSpawnMs / 1000,
-              delay: colIndex * 0.02 + (cell.fallDistance || 1) * 0.03,
+              delay: colIndex * 0.05 + (cell.fallDistance || 1) * 0.06,
               ease: [0.22, 1, 0.36, 1],
             },
           },
@@ -93,8 +93,8 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
           },
           transition: {
             y: {
-              duration: ANIM_TIMING.symbolDropMs / 1000 + (cell.fallDistance || 1) * 0.04, // Faster
-              delay: colIndex * 0.02,
+              duration: ANIM_TIMING.symbolDropMs / 1000 + (cell.fallDistance || 1) * 0.07, // Slower for music sync
+              delay: colIndex * 0.04,
               ease: [0.22, 1, 0.36, 1],
             },
           },

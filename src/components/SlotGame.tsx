@@ -22,16 +22,17 @@ import btnTextBuyBonus from "@/assets/btn-text-buybonus.png";
 import btnTextFreeSpins from "@/assets/btn-text-freespins.png";
 
 // ==================== TIMING CONFIG (Sweet Bonanza / Gates of Olympus style) ====================
+// Adjusted for better sync with music and sound effects
 const SPIN_TIMING = {
-  minSpinDurationMs: 700,      // Reel drop duration ~0.7s
-  cascadeDelayMs: 250,         // Cascade delay ~0.25s
-  symbolDropMs: 400,           // Symbol drop animation
-  symbolSpawnMs: 350,          // New symbol spawn
-  winPauseMs: 400,             // Pause after win
-  winHighlightMs: 450,         // Win highlight duration
-  symbolFadeOutMs: 200,        // Symbol fade out
-  popAnimationMs: 250,         // Pop animation
-  multiplierDropMs: 400,       // Multiplier drop animation ~0.4s
+  minSpinDurationMs: 1200,     // Reel drop duration ~1.2s (slower, more dramatic)
+  cascadeDelayMs: 400,         // Cascade delay ~0.4s (pause between cascades)
+  symbolDropMs: 600,           // Symbol drop animation (smoother fall)
+  symbolSpawnMs: 500,          // New symbol spawn
+  winPauseMs: 600,             // Pause after win (let player see the win)
+  winHighlightMs: 700,         // Win highlight duration (longer celebration)
+  symbolFadeOutMs: 300,        // Symbol fade out
+  popAnimationMs: 350,         // Pop animation
+  multiplierDropMs: 550,       // Multiplier drop animation
 };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -308,6 +309,10 @@ export const SlotGame = () => {
     console.log("Current Balance (ref):", balanceRef.current);
     
     if (finalWin > 0) { 
+      // Stop any remaining spin sounds before playing win sound
+      SoundManager.stop("spin_start");
+      SoundManager.stop("reel_tumble");
+      
       if (finalWin >= betRef.current * 20) { SoundManager.play("win_big"); } else { SoundManager.play("win_small"); }
       
       // Update win displays
@@ -443,6 +448,10 @@ export const SlotGame = () => {
     }
     
     if (hasWins) { 
+      // Stop spin sound when win is detected to prevent overlap
+      SoundManager.stop("spin_start");
+      SoundManager.stop("reel_tumble");
+      
       setGrid(newGrid); 
       setIsCascading(true); 
       cascadeTimeoutRef.current = setTimeout(() => { 
