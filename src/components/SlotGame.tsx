@@ -212,10 +212,31 @@ export const SlotGame = () => {
   const isMobile = useIsMobile();
 
   const [musicStarted, setMusicStarted] = useState(false);
+  const introMusicRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize sounds only
+  // Initialize sounds and auto-play intro music
   useEffect(() => {
     SoundManager.init();
+    
+    // Auto-play intro music on mount
+    const audio = new Audio("/sounds/you-win-sequence-2-183949.mp3");
+    audio.loop = false;
+    audio.volume = 0.7;
+    introMusicRef.current = audio;
+    
+    audio.play().then(() => {
+      setMusicStarted(true);
+    }).catch(() => {
+      // Ignore autoplay failures silently (browser policy)
+    });
+    
+    // Cleanup on unmount
+    return () => {
+      if (introMusicRef.current) {
+        introMusicRef.current.pause();
+        introMusicRef.current.currentTime = 0;
+      }
+    };
   }, []);
 
   useEffect(() => { freeSpinsRemainingRef.current = freeSpinsRemaining; }, [freeSpinsRemaining]);
@@ -225,17 +246,13 @@ export const SlotGame = () => {
   useEffect(() => { pendingFreeSpinsRef.current = pendingFreeSpins; }, [pendingFreeSpins]);
   useEffect(() => { balanceRef.current = balance; }, [balance]);
   
-  // Start music when user taps anywhere on loading screen
-  const handleStartMusic = useCallback(() => {
-    if (!musicStarted) {
-      SoundManager.playLoadingMusic();
-      setMusicStarted(true);
-    }
-  }, [musicStarted]);
-  
   // Handle entering game (dismiss loading screen)
   const handleEnterGame = useCallback(() => {
-    SoundManager.stopLoadingMusic(true); // Fade out
+    // Stop intro music
+    if (introMusicRef.current) {
+      introMusicRef.current.pause();
+      introMusicRef.current.currentTime = 0;
+    }
     setIsLoading(false);
   }, []);
   
@@ -697,12 +714,6 @@ export const SlotGame = () => {
   if (isLoading) {
     return (
       <div 
-        onClick={() => {
-          // Start music on any click (browser autoplay policy requires user interaction)
-          if (!musicStarted) {
-            handleStartMusic();
-          }
-        }}
         style={{
           position: "fixed",
           inset: 0,
@@ -714,7 +725,6 @@ export const SlotGame = () => {
           alignItems: "center",
           background: "linear-gradient(180deg, #1a0a2e 0%, #16082a 50%, #0d0515 100%)",
           zIndex: 9999,
-          cursor: musicStarted ? "default" : "pointer",
         }}
       >
         {/* Animated background particles */}
@@ -795,48 +805,20 @@ export const SlotGame = () => {
           />
         </div>
 
-        {/* Tap to start music hint (shown before music starts) */}
-        {!musicStarted && (
-          <motion.p
-            style={{
-              fontSize: isMobile ? "16px" : "18px",
-              color: "rgba(255,255,255,0.8)",
-              marginBottom: "20px",
-              textAlign: "center",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            🔊 Tap anywhere to start music
-          </motion.p>
-        )}
 
-        {/* Enter button - only show after music starts */}
+        {/* Enter button */}
         <motion.button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!musicStarted) {
-              handleStartMusic();
-            }
-            handleEnterGame();
-          }}
+          onClick={handleEnterGame}
           style={{
             padding: isMobile ? "16px 40px" : "18px 50px",
             fontSize: isMobile ? "18px" : "22px",
             fontWeight: 800,
             color: "white",
-            background: musicStarted 
-              ? "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)"
-              : "linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%)",
-            border: musicStarted 
-              ? "3px solid rgba(74,222,128,0.5)"
-              : "3px solid rgba(168,85,247,0.5)",
+            background: "linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%)",
+            border: "3px solid rgba(168,85,247,0.5)",
             borderRadius: "16px",
             cursor: "pointer",
-            boxShadow: musicStarted 
-              ? "0 0 30px rgba(74,222,128,0.4), 0 8px 0 #15803d"
-              : "0 0 30px rgba(168,85,247,0.4), 0 8px 0 #4c1d95",
+            boxShadow: "0 0 30px rgba(168,85,247,0.4), 0 8px 0 #4c1d95",
             textTransform: "uppercase",
             letterSpacing: "0.1em",
           }}
@@ -845,43 +827,16 @@ export const SlotGame = () => {
           transition={{ delay: 1.5 }}
           whileHover={{ 
             scale: 1.05, 
-            boxShadow: musicStarted 
-              ? "0 0 40px rgba(74,222,128,0.6), 0 8px 0 #15803d"
-              : "0 0 40px rgba(168,85,247,0.6), 0 8px 0 #4c1d95" 
+            boxShadow: "0 0 40px rgba(168,85,247,0.6), 0 8px 0 #4c1d95" 
           }}
           whileTap={{ 
             scale: 0.95, 
-            boxShadow: musicStarted 
-              ? "0 0 20px rgba(74,222,128,0.4), 0 4px 0 #15803d"
-              : "0 0 20px rgba(168,85,247,0.4), 0 4px 0 #4c1d95" 
+            boxShadow: "0 0 20px rgba(168,85,247,0.4), 0 4px 0 #4c1d95" 
           }}
         >
-          {musicStarted ? "🎰 Enter Game" : "🎰 Tap to Play"}
+          TAP TO PLAY
         </motion.button>
 
-        {/* Music playing indicator */}
-        {musicStarted && (
-          <motion.p
-            style={{
-              marginTop: "20px",
-              fontSize: "12px",
-              color: "rgba(74,222,128,0.8)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <motion.span
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-            >
-              🎵
-            </motion.span>
-            Music playing...
-          </motion.p>
-        )}
       </div>
     );
   }
