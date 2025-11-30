@@ -1,328 +1,1415 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GameBoard } from "./game/GameBoard";
-import { Sidebar } from "./game/Sidebar";
-import { BottomBar } from "./game/BottomBar";
 import { FreeSpinsModal } from "./game/FreeSpinsModal";
+import { FreeSpinsEndModal } from "./game/FreeSpinsEndModal";
+import { BuyBonusModal } from "./game/BuyBonusModal";
 import { WinDisplay } from "./game/WinDisplay";
+import { WinBreakdownPanel, WinLine, WinBreakdown } from "./game/WinBreakdownPanel";
+import { SoundManager } from "@/game/SoundManager";
 import { toast } from "sonner";
 import gameBackground from "@/assets/game-background.png";
-import loadingLogo from "@/assets/loading-logo.png";
+import loadingLogoNew from "@/assets/loading-logo-new.png";
+import btnSpinNormal from "@/assets/btn-spin-normal.png";
+import btnSpinPressed from "@/assets/btn-spin-pressed.png";
+import btnSquareNormal from "@/assets/btn-square-normal.png";
+import btnIconInfo from "@/assets/btn-icon-info.png";
+import btnIconSettings from "@/assets/btn-icon-settings.png";
+import btnRectNormal from "@/assets/btn-rect-normal.png";
+import btnRectHover from "@/assets/btn-rect-hover.png";
+import btnRectPressed from "@/assets/btn-rect-pressed.png";
+import btnTextBuyBonus from "@/assets/btn-text-buybonus.png";
+import btnTextFreeSpins from "@/assets/btn-text-freespins.png";
+
+// ==================== TIMING CONFIG (Sweet Bonanza / Gates of Olympus style) ====================
+const SPIN_TIMING = {
+  minSpinDurationMs: 700,      // Reel drop duration ~0.7s
+  cascadeDelayMs: 250,         // Cascade delay ~0.25s
+  symbolDropMs: 400,           // Symbol drop animation
+  symbolSpawnMs: 350,          // New symbol spawn
+  winPauseMs: 400,             // Pause after win
+  winHighlightMs: 450,         // Win highlight duration
+  symbolFadeOutMs: 200,        // Symbol fade out
+  popAnimationMs: 250,         // Pop animation
+  multiplierDropMs: 400,       // Multiplier drop animation ~0.4s
+};
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type Symbol = {
   id: string;
-  type: "purple" | "grape" | "green" | "red" | "heart" | "plum" | "blue" | "banana" | "bomb";
+  type: "purple" | "grape" | "green" | "red" | "heart" | "plum" | "blue" | "banana" | "scatter" | "multiplier";
   multiplier?: number;
 };
 
+export type CellState = "idle" | "winning" | "popping" | "falling" | "spawning";
+
 export type Cell = {
-  symbol: Symbol;
-  isWinning: boolean;
+  symbol: Symbol | null;
+  state: CellState;
   id: string;
+  fallDistance?: number;
+};
+
+export type GameMode = "base" | "freespins";
+
+const BET_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+
+const SYMBOL_LABELS: Record<string, string> = {
+  purple: "Pluffy Chef", plum: "Brownie", red: "Pizza", heart: "Smoothie",
+  grape: "Cookie", green: "Muffin", blue: "Spatula", banana: "Rolling Pin",
+  scatter: "Oven", multiplier: "Multiplier",
+};
+
+// Hook for detecting mobile
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  return isMobile;
+};
+
+// Cascade History Item Component (Sweet Bonanza style)
+interface CascadeItem {
+  id: string;
+  symbolLabel: string;
+  count: number;
+  payout: number;
+}
+
+const CascadeHistoryBox = ({ items, currencySymbol = "₺" }: { items: CascadeItem[]; currencySymbol?: string }) => {
+  if (items.length === 0) return null;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      style={{
+        position: "absolute",
+        left: "clamp(8px, 2vw, 16px)",
+        bottom: "clamp(140px, 22vh, 180px)",
+        width: "clamp(140px, 35vw, 180px)",
+        maxHeight: "clamp(120px, 20vh, 160px)",
+        padding: "clamp(8px, 1.5vw, 12px)",
+        borderRadius: "clamp(10px, 2vw, 14px)",
+        background: "linear-gradient(180deg, rgba(37, 16, 61, 0.95), rgba(18, 7, 34, 0.98))",
+        backdropFilter: "blur(8px)",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(124, 255, 163, 0.2)",
+        border: "1px solid rgba(124, 255, 163, 0.3)",
+        zIndex: 40,
+        overflowY: "auto",
+      }}
+    >
+      <div style={{ fontSize: "clamp(8px, 2vw, 10px)", fontWeight: 700, color: "#ffe898", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        Cascades
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        {items.slice(-5).map((item, index) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "clamp(9px, 2.2vw, 11px)",
+              padding: "4px 6px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.05)",
+            }}
+          >
+            <span style={{ color: "#f7f2ff" }}>{item.count}x {item.symbolLabel.split(' ')[0]}</span>
+            <span style={{ color: "#7dff70", fontWeight: 600 }}>{currencySymbol}{item.payout.toFixed(0)}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
 };
 
 export const SlotGame = () => {
+  // Loading screen state
+  const [isLoading, setIsLoading] = useState(true);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
+  
   const [balance, setBalance] = useState(100000);
-  const [bet, setBet] = useState(2);
-  const [totalWin, setTotalWin] = useState(0);
+  const [bet, setBet] = useState(10);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [freeSpins, setFreeSpins] = useState(0);
-  const [freeSpinMultiplier, setFreeSpinMultiplier] = useState(1);
+  const [isCascading, setIsCascading] = useState(false);
+  const [grid, setGrid] = useState<Cell[][]>([]);
+  const [gameMode, setGameMode] = useState<GameMode>("base");
+  
+  const [freeSpinsRemaining, setFreeSpinsRemaining] = useState(0);
+  const [freeSpinsTotal, setFreeSpinsTotal] = useState(0);
+  const [freeSpinsTotalWin, setFreeSpinsTotalWin] = useState(0);
   const [showFreeSpinsModal, setShowFreeSpinsModal] = useState(false);
+  const [showFreeSpinsEndModal, setShowFreeSpinsEndModal] = useState(false);
+  const [pendingFreeSpins, setPendingFreeSpins] = useState(0);
+  
   const [currentWin, setCurrentWin] = useState(0);
   const [lastSpinWin, setLastSpinWin] = useState(0);
-  const [grid, setGrid] = useState<Cell[][]>([]);
+  
+  const [showBuyBonusModal, setShowBuyBonusModal] = useState(false);
+  
+  const [buyBonusHover, setBuyBonusHover] = useState(false);
+  const [buyBonusPressed, setBuyBonusPressed] = useState(false);
+  const [superFreeSpinsHover, setSuperFreeSpinsHover] = useState(false);
+  const [superFreeSpinsPressed, setSuperFreeSpinsPressed] = useState(false);
+  
+  const [winBreakdown, setWinBreakdown] = useState<WinBreakdown>([]);
+  const [cascadeHistory, setCascadeHistory] = useState<CascadeItem[]>([]);
+  const tumbleIndexRef = useRef(0);
+  const spinIdRef = useRef(0);
+  const spinStartTimeRef = useRef(0);
+  
+  const cascadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const freeSpinsRemainingRef = useRef(0);
+  const gameModeRef = useRef<GameMode>("base");
+  const isProcessingRef = useRef(false);
+  const freeSpinsTotalWinRef = useRef(0);
+  
+  const currentSpinBaseWinRef = useRef(0);
+  const collectedMultipliersRef = useRef<number[]>([]);
+  const betRef = useRef(bet);
+  const pendingFreeSpinsRef = useRef(0);
+  const balanceRef = useRef(balance);
+
+  const isMobile = useIsMobile();
+
+  const [musicStarted, setMusicStarted] = useState(false);
+
+  // Initialize sounds only
+  useEffect(() => { 
+    SoundManager.init();
+  }, []);
+  
+  useEffect(() => { freeSpinsRemainingRef.current = freeSpinsRemaining; }, [freeSpinsRemaining]);
+  useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+  useEffect(() => { freeSpinsTotalWinRef.current = freeSpinsTotalWin; }, [freeSpinsTotalWin]);
+  useEffect(() => { betRef.current = bet; }, [bet]);
+  useEffect(() => { pendingFreeSpinsRef.current = pendingFreeSpins; }, [pendingFreeSpins]);
+  useEffect(() => { balanceRef.current = balance; }, [balance]);
+  
+  // Start music when user taps anywhere on loading screen
+  const handleStartMusic = useCallback(() => {
+    if (!musicStarted) {
+      SoundManager.playLoadingMusic();
+      setMusicStarted(true);
+    }
+  }, [musicStarted]);
+  
+  // Handle entering game (dismiss loading screen)
+  const handleEnterGame = useCallback(() => {
+    SoundManager.stopLoadingMusic(true); // Fade out
+    setIsLoading(false);
+  }, []);
+  
+  // Toggle sound mute
+  const handleToggleSound = useCallback(() => {
+    const newMuted = SoundManager.toggleMute();
+    setIsSoundMuted(newMuted);
+  }, []);
 
   const ROWS = 5;
   const COLS = 6;
 
-  useEffect(() => {
-    initializeGrid();
+  const generateRandomSymbol = useCallback((isFreeSpinMode = false): Symbol => {
+    const rand = Math.random() * 100;
+    if (isFreeSpinMode && rand < 5) {
+      const multRand = Math.random() * 100;
+      let value = 2;
+      if (multRand < 40) value = 2; else if (multRand < 65) value = 3; else if (multRand < 80) value = 5;
+      else if (multRand < 90) value = 10; else if (multRand < 95) value = 15; else if (multRand < 98) value = 25;
+      else if (multRand < 99.5) value = 50; else value = 100;
+      return { id: Math.random().toString(36), type: "multiplier", multiplier: value };
+    }
+    if (!isFreeSpinMode && rand < 2) return { id: Math.random().toString(36), type: "scatter" };
+    const symbolRand = Math.random() * 100;
+    if (symbolRand < 4) return { id: Math.random().toString(36), type: "purple" };
+    if (symbolRand < 11) return { id: Math.random().toString(36), type: "plum" };
+    if (symbolRand < 20) return { id: Math.random().toString(36), type: "red" };
+    if (symbolRand < 34) return { id: Math.random().toString(36), type: "heart" };
+    if (symbolRand < 48) return { id: Math.random().toString(36), type: "grape" };
+    if (symbolRand < 65) return { id: Math.random().toString(36), type: "green" };
+    if (symbolRand < 82) return { id: Math.random().toString(36), type: "blue" };
+    return { id: Math.random().toString(36), type: "banana" };
   }, []);
 
-  const initializeGrid = () => {
-    const newGrid: Cell[][] = [];
-    for (let row = 0; row < ROWS; row++) {
-      const newRow: Cell[] = [];
-      for (let col = 0; col < COLS; col++) {
-        newRow.push({
-          symbol: generateRandomSymbol(),
-          isWinning: false,
-          id: `${row}-${col}-${Date.now()}`,
-        });
-      }
-      newGrid.push(newRow);
-    }
-    setGrid(newGrid);
-  };
+  const generateGrid = useCallback((isFreeSpinMode: boolean): Cell[][] => {
+    const newGrid: Cell[][] = []; const symbolCounts: Record<string, number> = {};
+    const winChance = isFreeSpinMode ? 0.35 : 0.25; const shouldWin = Math.random() < winChance;
+    for (let r = 0; r < ROWS; r++) { const row: Cell[] = []; for (let c = 0; c < COLS; c++) { row.push({ symbol: null as any, state: "spawning", id: `${r}-${c}-${Date.now()}-${Math.random()}`, fallDistance: r + 1 }); } newGrid.push(row); }
+    if (shouldWin) {
+      const winTypes: Symbol["type"][] = ["banana", "blue", "green", "grape", "heart", "red", "plum", "purple"];
+      const weights = [25, 20, 18, 12, 10, 8, 5, 2]; let randWin = Math.random() * weights.reduce((a, b) => a + b, 0); let winSymbol: Symbol["type"] = "banana";
+      for (let i = 0; i < winTypes.length; i++) { randWin -= weights[i]; if (randWin <= 0) { winSymbol = winTypes[i]; break; } }
+      const winCount = 8 + Math.floor(Math.random() * 4); const positions: number[] = [];
+      for (let i = 0; i < ROWS * COLS; i++) positions.push(i);
+      for (let i = positions.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [positions[i], positions[j]] = [positions[j], positions[i]]; }
+      for (let i = 0; i < winCount; i++) { const pos = positions[i]; const r = Math.floor(pos / COLS), c = pos % COLS; newGrid[r][c].symbol = { id: Math.random().toString(36), type: winSymbol }; symbolCounts[winSymbol] = (symbolCounts[winSymbol] || 0) + 1; }
+      for (let i = winCount; i < positions.length; i++) { const pos = positions[i]; const r = Math.floor(pos / COLS), c = pos % COLS; let sym = generateRandomSymbol(isFreeSpinMode); let attempts = 0; while ((symbolCounts[sym.type] || 0) >= 7 && attempts < 20) { sym = generateRandomSymbol(isFreeSpinMode); attempts++; } symbolCounts[sym.type] = (symbolCounts[sym.type] || 0) + 1; newGrid[r][c].symbol = sym; }
+    } else { for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { let sym = generateRandomSymbol(isFreeSpinMode); let attempts = 0; while ((symbolCounts[sym.type] || 0) >= 7 && attempts < 20) { sym = generateRandomSymbol(isFreeSpinMode); attempts++; } symbolCounts[sym.type] = (symbolCounts[sym.type] || 0) + 1; newGrid[r][c].symbol = sym; } } }
+    return newGrid;
+  }, [generateRandomSymbol]);
 
-  const generateRandomSymbol = (allowBomb = false): Symbol => {
-    // RTP 96.5'e göre ağırlıklandırılmış sembol dağılımı
-    // En pahalı semboller en az, en ucuz semboller en çok gelir
-    const weightedSymbols = [
-      // Premium (Chef) - En az %5
-      ...Array(5).fill("purple"),
-      
-      // High symbols - %10
-      ...Array(10).fill("plum"),
-      ...Array(10).fill("red"),
-      
-      // Mid symbols - %20
-      ...Array(20).fill("heart"),
-      ...Array(20).fill("grape"),
-      
-      // Low symbols - %35 (En çok)
-      ...Array(35).fill("green"),
-      ...Array(35).fill("blue"),
-      ...Array(35).fill("banana"),
-    ];
+  const initializeGrid = useCallback(() => { const newGrid: Cell[][] = []; for (let row = 0; row < ROWS; row++) { const newRow: Cell[] = []; for (let col = 0; col < COLS; col++) { newRow.push({ symbol: generateRandomSymbol(false), state: "idle", id: `${row}-${col}-init-${Math.random()}` }); } newGrid.push(newRow); } setGrid(newGrid); }, [generateRandomSymbol]);
+  useEffect(() => { initializeGrid(); }, [initializeGrid]);
+
+  const PAYTABLE: Record<string, { "8-9": number; "10-11": number; "12+": number }> = { purple: { "8-9": 10, "10-11": 25, "12+": 50 }, plum: { "8-9": 5, "10-11": 10, "12+": 25 }, red: { "8-9": 3, "10-11": 7, "12+": 15 }, heart: { "8-9": 2, "10-11": 5, "12+": 10 }, grape: { "8-9": 1.5, "10-11": 4, "12+": 8 }, green: { "8-9": 1, "10-11": 2, "12+": 5 }, blue: { "8-9": 0.5, "10-11": 1.5, "12+": 3 }, banana: { "8-9": 0.25, "10-11": 1, "12+": 2 } };
+  const getPayoutMultiplier = (symbolType: string, count: number): number => { const payout = PAYTABLE[symbolType]; if (!payout) return 0; if (count >= 12) return payout["12+"]; if (count >= 10) return payout["10-11"]; if (count >= 8) return payout["8-9"]; return 0; };
+
+  const endFreeSpins = useCallback(() => { 
+    setShowFreeSpinsEndModal(true); 
+    setGameMode("base"); 
+    gameModeRef.current = "base"; 
+    setFreeSpinsRemaining(0); 
+    freeSpinsRemainingRef.current = 0; 
+    setFreeSpinsTotal(0); 
+    collectedMultipliersRef.current = [];
+    isProcessingRef.current = false; 
+    setWinBreakdown([]); 
+    setCascadeHistory([]);
+  }, []);
+  
+  const handleFreeSpinsEndClose = useCallback(() => { 
+    setShowFreeSpinsEndModal(false); 
+    setFreeSpinsTotalWin(0); 
+    freeSpinsTotalWinRef.current = 0; 
+  }, []);
+
+  // Use a ref for finishSpinCycle to avoid stale closure issues
+  const finishSpinCycleRef = useRef<() => Promise<void>>();
+  
+  const finishSpinCycle = useCallback(async () => {
+    setIsCascading(false); 
+    isProcessingRef.current = false;
     
-    if (allowBomb && Math.random() < 0.15) {
-      return {
-        id: Math.random().toString(36),
-        type: "bomb",
-        multiplier: Math.floor(Math.random() * 5) + 2,
-      };
-    }
-
-    const randomType = weightedSymbols[Math.floor(Math.random() * weightedSymbols.length)] as Symbol["type"];
-    return {
-      id: Math.random().toString(36),
-      type: randomType,
-    };
-  };
-
-  const handleSpin = async () => {
-    if (isSpinning) return;
+    const baseWin = currentSpinBaseWinRef.current;
+    const multipliers = collectedMultipliersRef.current;
+    const multiplierSum = multipliers.length > 0 ? multipliers.reduce((a, b) => a + b, 0) : 1;
+    const finalWin = Math.round(baseWin * multiplierSum * 100) / 100;
     
-    if (freeSpins === 0 && balance < bet) {
-      toast.error("Insufficient balance!");
-      return;
-    }
-
-    setIsSpinning(true);
-    setCurrentWin(0);
-    setLastSpinWin(0);
-
-    if (freeSpins === 0) {
-      setBalance(balance - bet);
+    console.log("=== FINISH SPIN CYCLE ===");
+    console.log("Base Win:", baseWin);
+    console.log("Multiplier Sum:", multiplierSum);
+    console.log("Final Win:", finalWin);
+    console.log("Current Balance (ref):", balanceRef.current);
+    
+    if (finalWin > 0) { 
+      if (finalWin >= betRef.current * 20) { SoundManager.play("win_big"); } else { SoundManager.play("win_small"); }
+      
+      // Update win displays
+      setCurrentWin(finalWin); 
+      setLastSpinWin(finalWin); 
+      
+      // CRITICAL: Add win to balance
+      setBalance(prevBalance => {
+        const newBalance = prevBalance + finalWin;
+        console.log("BALANCE UPDATE:", prevBalance, "+", finalWin, "=", newBalance);
+        balanceRef.current = newBalance; // Keep ref in sync
+        return newBalance;
+      }); 
+      
+      // Update free spins total if in free spins mode
+      if (gameModeRef.current === "freespins") { 
+        setFreeSpinsTotalWin(prev => { 
+          const newTotal = prev + finalWin; 
+          freeSpinsTotalWinRef.current = newTotal; 
+          return newTotal; 
+        }); 
+      } 
+      
+      await wait(SPIN_TIMING.winPauseMs);
     } else {
-      setFreeSpins(freeSpins - 1);
+      // No win - just reset last spin win display
+      setLastSpinWin(0);
     }
-
-    // ASLA yeni grid oluşturma! Sadece mevcut grid'in sembollerini değiştir
-    const updatedGrid = grid.map((row, rowIndex) => 
-      row.map((cell, colIndex) => ({
-        ...cell,
-        symbol: generateRandomSymbol(freeSpins > 0),
-        isWinning: false,
-        id: `${rowIndex}-${colIndex}-${Date.now()}` // ID değiştir ki React animasyon yapsın
-      }))
-    );
     
-    setGrid(updatedGrid);
-
-    setTimeout(() => {
-      setIsSpinning(false);
-      checkWins(updatedGrid);
-    }, 800);
-  };
-
-  const checkWins = async (currentGrid: Cell[][]) => {
-    let hasWins = false;
-    let winAmount = 0;
-    let totalMultiplier = freeSpinMultiplier;
+    // Reset accumulators for next spin
+    currentSpinBaseWinRef.current = 0;
+    collectedMultipliersRef.current = [];
     
-    // ÖNEMLİ: Mevcut grid'i kullan, isWinning durumunu korumadan yeni hesapla
+    // Check for pending free spins trigger
+    if (pendingFreeSpinsRef.current > 0 && gameModeRef.current === "base") { 
+      SoundManager.play("free_spins_start"); 
+      setShowFreeSpinsModal(true); 
+      return; 
+    }
+    
+    // Continue free spins if in free spins mode
+    if (gameModeRef.current === "freespins") { 
+      const remaining = freeSpinsRemainingRef.current; 
+      if (remaining > 0) { 
+        setTimeout(() => { 
+          if (gameModeRef.current === "freespins" && freeSpinsRemainingRef.current > 0) { 
+            triggerFreeSpin(); 
+          } 
+        }, finalWin > betRef.current * 10 ? 1000 : 600); 
+      } else { 
+        setTimeout(() => { endFreeSpins(); }, 800); 
+      } 
+    }
+  }, [endFreeSpins]);
+  
+  // Keep the ref updated
+  useEffect(() => {
+    finishSpinCycleRef.current = finishSpinCycle;
+  }, [finishSpinCycle]);
+
+  const checkWins = useCallback((currentGrid: Cell[][]) => {
     const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+    const symbolCounts: Record<string, { count: number; positions: { row: number; col: number }[] }> = {};
+    const scatterPositions: { row: number; col: number }[] = []; 
+    const newMultipliers: number[] = [];
+    
+    currentGrid.forEach((row, rowIndex) => { 
+      row.forEach((cell, colIndex) => { 
+        if (!cell.symbol) return; 
+        if (cell.symbol.type === "scatter") scatterPositions.push({ row: rowIndex, col: colIndex }); 
+        else if (cell.symbol.type === "multiplier") newMultipliers.push(cell.symbol.multiplier || 2); 
+        else { 
+          if (!symbolCounts[cell.symbol.type]) symbolCounts[cell.symbol.type] = { count: 0, positions: [] }; 
+          symbolCounts[cell.symbol.type].count++; 
+          symbolCounts[cell.symbol.type].positions.push({ row: rowIndex, col: colIndex }); 
+        } 
+      }); 
+    });
+    
+    if (newMultipliers.length > 0) { 
+      SoundManager.play("bomb_explode"); 
+      collectedMultipliersRef.current = [...collectedMultipliersRef.current, ...newMultipliers];
+    }
+    
+    let hasWins = false; 
+    let cascadeWin = 0; 
+    const newBreakdownLines: WinLine[] = [];
+    const currentBet = betRef.current;
+    
+    Object.entries(symbolCounts).forEach(([symbolType, data]) => { 
+      if (data.count >= 8) { 
+        hasWins = true; 
+        const payout = currentBet * getPayoutMultiplier(symbolType, data.count); 
+        cascadeWin += payout; 
+        data.positions.forEach(pos => { newGrid[pos.row][pos.col].state = "winning"; }); 
+        const breakdownLine = { 
+          id: `${spinIdRef.current}-${tumbleIndexRef.current}-${symbolType}`, 
+          symbolId: symbolType, 
+          symbolLabel: SYMBOL_LABELS[symbolType] || symbolType, 
+          count: data.count, 
+          payout: payout 
+        };
+        newBreakdownLines.push(breakdownLine);
+        // Add to cascade history
+        setCascadeHistory(prev => [...prev, breakdownLine]);
+      } 
+    });
+    
+    if (newBreakdownLines.length > 0) { 
+      setWinBreakdown(prev => [...prev, ...newBreakdownLines]); 
+      tumbleIndexRef.current++; 
+    }
+    
+    if (cascadeWin > 0) {
+      currentSpinBaseWinRef.current += cascadeWin;
+      console.log("Win detected:", cascadeWin, "Total base win:", currentSpinBaseWinRef.current);
+    }
+    
+    if (gameModeRef.current === "base" && scatterPositions.length >= 4 && pendingFreeSpinsRef.current === 0) { 
+      const spinsToAward = scatterPositions.length === 4 ? 10 : scatterPositions.length === 5 ? 15 : 20; 
+      setPendingFreeSpins(spinsToAward); 
+      pendingFreeSpinsRef.current = spinsToAward;
+      scatterPositions.forEach(pos => { newGrid[pos.row][pos.col].state = "winning"; }); 
+      hasWins = true; 
+    }
+    
+    if (gameModeRef.current === "freespins" && scatterPositions.length >= 3) { 
+      setFreeSpinsRemaining(prev => prev + 5); 
+      freeSpinsRemainingRef.current += 5; 
+      setFreeSpinsTotal(prev => prev + 5); 
+      toast.success("🎉 +5 Free Spins!"); 
+      scatterPositions.forEach(pos => { newGrid[pos.row][pos.col].state = "winning"; }); 
+    }
+    
+    if (hasWins) { 
+      setGrid(newGrid); 
+      setIsCascading(true); 
+      cascadeTimeoutRef.current = setTimeout(() => { 
+        SoundManager.play("symbol_pop"); 
+        const poppingGrid = newGrid.map(row => row.map(cell => ({ ...cell, state: cell.state === "winning" ? "popping" as CellState : cell.state }))); 
+        setGrid(poppingGrid); 
+        cascadeTimeoutRef.current = setTimeout(() => { handleCascade(poppingGrid); }, SPIN_TIMING.popAnimationMs); 
+      }, SPIN_TIMING.winHighlightMs); 
+    } else { 
+      // Use ref to always get latest finishSpinCycle
+      if (finishSpinCycleRef.current) {
+        finishSpinCycleRef.current();
+      }
+    }
+  }, []);
 
-    // Count each symbol type
-    const symbolCounts: { [key: string]: { count: number; positions: { row: number; col: number }[] } } = {};
-    const bombPositions: { row: number; col: number; multiplier: number }[] = [];
+  const handleCascade = useCallback((currentGrid: Cell[][]) => {
+    SoundManager.play("reel_tumble");
+    const newGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+    for (let row = 0; row < ROWS; row++) { for (let col = 0; col < COLS; col++) { if (newGrid[row][col].state === "popping") { newGrid[row][col].symbol = null; newGrid[row][col].state = "idle"; } } }
+    for (let col = 0; col < COLS; col++) { let emptyBelow = 0; for (let row = ROWS - 1; row >= 0; row--) { if (newGrid[row][col].symbol === null) emptyBelow++; else if (emptyBelow > 0) { const targetRow = row + emptyBelow; newGrid[targetRow][col] = { ...newGrid[row][col], state: "falling", fallDistance: emptyBelow }; newGrid[row][col] = { symbol: null, state: "idle", id: `empty-${row}-${col}-${Date.now()}` }; } } let spawnIndex = 0; for (let row = 0; row < ROWS; row++) { if (newGrid[row][col].symbol === null) { spawnIndex++; newGrid[row][col] = { symbol: generateRandomSymbol(gameModeRef.current === "freespins"), state: "spawning", id: `spawn-${row}-${col}-${Date.now()}-${Math.random()}`, fallDistance: spawnIndex }; } } }
+    setGrid(newGrid); 
+    cascadeTimeoutRef.current = setTimeout(() => { 
+      const idleGrid = newGrid.map(row => row.map(cell => ({ ...cell, state: "idle" as CellState, fallDistance: 0 }))); 
+      setGrid(idleGrid); 
+      cascadeTimeoutRef.current = setTimeout(() => { checkWins(idleGrid); }, SPIN_TIMING.cascadeDelayMs); 
+    }, SPIN_TIMING.symbolDropMs + SPIN_TIMING.symbolSpawnMs);
+  }, [generateRandomSymbol, checkWins]);
 
-    currentGrid.forEach((row, rowIndex) => {
-      row.forEach((cell, colIndex) => {
-        if (cell.symbol.type === "bomb") {
-          bombPositions.push({
-            row: rowIndex,
-            col: colIndex,
-            multiplier: cell.symbol.multiplier || 2,
-          });
-        } else {
-          if (!symbolCounts[cell.symbol.type]) {
-            symbolCounts[cell.symbol.type] = { count: 0, positions: [] };
+  const triggerFreeSpin = useCallback(async () => {
+    if (isSpinning || isCascading || isProcessingRef.current) return;
+    const remaining = freeSpinsRemainingRef.current; 
+    if (remaining <= 0) { endFreeSpins(); return; }
+    
+    console.log("=== STARTING FREE SPIN ===");
+    console.log("Remaining free spins:", remaining);
+    
+    isProcessingRef.current = true; 
+    setIsSpinning(true); 
+    spinStartTimeRef.current = performance.now(); 
+    SoundManager.play("spin_start");
+    
+    // Reset win displays for new spin (but NOT balance - free spins don't cost anything)
+    setCurrentWin(0); 
+    setLastSpinWin(0); 
+    
+    // Reset win accumulators
+    currentSpinBaseWinRef.current = 0;
+    collectedMultipliersRef.current = [];
+    
+    // Reset breakdown displays
+    setWinBreakdown([]); 
+    setCascadeHistory([]);
+    spinIdRef.current++; 
+    tumbleIndexRef.current = 0;
+    
+    const newRemaining = remaining - 1; 
+    setFreeSpinsRemaining(newRemaining); 
+    freeSpinsRemainingRef.current = newRemaining;
+    
+    const newGrid = generateGrid(true); 
+    setGrid(newGrid);
+    
+    const elapsed = performance.now() - spinStartTimeRef.current; 
+    const remainingTime = SPIN_TIMING.minSpinDurationMs - elapsed; 
+    if (remainingTime > 0) { await wait(remainingTime); }
+    
+    const idleGrid = newGrid.map(row => row.map(cell => ({ ...cell, state: "idle" as CellState, fallDistance: 0 }))); 
+    setGrid(idleGrid); 
+    setIsSpinning(false); 
+    await wait(100); 
+    checkWins(idleGrid);
+  }, [isSpinning, isCascading, generateGrid, checkWins, endFreeSpins]);
+
+  const handleSpin = useCallback(async () => {
+    if (isSpinning || isCascading || isProcessingRef.current) return;
+    if (balance < bet) { toast.error("Insufficient balance!"); return; }
+    
+    console.log("=== STARTING NEW SPIN ===");
+    console.log("Balance before bet deduction:", balance);
+    
+    isProcessingRef.current = true; 
+    setIsSpinning(true); 
+    spinStartTimeRef.current = performance.now(); 
+    SoundManager.play("spin_start");
+    
+    // Reset win displays for new spin
+    setCurrentWin(0); 
+    setLastSpinWin(0); 
+    
+    // Reset win accumulators
+    currentSpinBaseWinRef.current = 0;
+    collectedMultipliersRef.current = [];
+    
+    // Deduct bet from balance
+    setBalance(prevBalance => {
+      const newBalance = prevBalance - bet;
+      console.log("BET DEDUCTED:", prevBalance, "-", bet, "=", newBalance);
+      balanceRef.current = newBalance; // Keep ref in sync
+      return newBalance;
+    }); 
+    
+    // Reset breakdown displays
+    setWinBreakdown([]); 
+    setCascadeHistory([]);
+    spinIdRef.current++; 
+    tumbleIndexRef.current = 0;
+    
+    const newGrid = generateGrid(false); 
+    setGrid(newGrid);
+    
+    const elapsed = performance.now() - spinStartTimeRef.current; 
+    const remainingTime = SPIN_TIMING.minSpinDurationMs - elapsed; 
+    if (remainingTime > 0) { await wait(remainingTime); }
+    
+    const idleGrid = newGrid.map(row => row.map(cell => ({ ...cell, state: "idle" as CellState, fallDistance: 0 }))); 
+    setGrid(idleGrid); 
+    setIsSpinning(false); 
+    await wait(100); 
+    checkWins(idleGrid);
+  }, [isSpinning, isCascading, balance, bet, generateGrid, checkWins]);
+
+  const startFreeSpins = useCallback(() => { 
+    setShowFreeSpinsModal(false); 
+    setGameMode("freespins"); 
+    gameModeRef.current = "freespins"; 
+    const spins = pendingFreeSpins; 
+    setFreeSpinsRemaining(spins); 
+    freeSpinsRemainingRef.current = spins; 
+    setFreeSpinsTotal(spins); 
+    setFreeSpinsTotalWin(0); 
+    freeSpinsTotalWinRef.current = 0; 
+    setPendingFreeSpins(0); 
+    pendingFreeSpinsRef.current = 0;
+    collectedMultipliersRef.current = [];
+    setWinBreakdown([]); 
+    setCascadeHistory([]);
+    setTimeout(() => { triggerFreeSpin(); }, 400); 
+  }, [pendingFreeSpins, triggerFreeSpin]);
+  
+  const handleBuyBonus = () => { if (isSpinning || isCascading || gameMode === "freespins") return; setShowBuyBonusModal(true); };
+  
+  const confirmBuyBonus = () => { 
+    const cost = bet * 100; 
+    if (balance < cost) { toast.error("Insufficient balance!"); return; } 
+    setBalance(prev => prev - cost); 
+    setShowBuyBonusModal(false); 
+    setPendingFreeSpins(10); 
+    pendingFreeSpinsRef.current = 10;
+    SoundManager.play("free_spins_start"); 
+    setShowFreeSpinsModal(true); 
+  };
+  
+  const handleIncreaseBet = () => { const idx = BET_STEPS.indexOf(bet); if (idx < BET_STEPS.length - 1) setBet(BET_STEPS[idx + 1]); };
+  const handleDecreaseBet = () => { const idx = BET_STEPS.indexOf(bet); if (idx > 0) setBet(BET_STEPS[idx - 1]); };
+  useEffect(() => { return () => { if (cascadeTimeoutRef.current) clearTimeout(cascadeTimeoutRef.current); }; }, []);
+
+  const isFreeSpinMode = gameMode === "freespins";
+  const totalMultiplier = collectedMultipliersRef.current.length > 0 ? collectedMultipliersRef.current.reduce((a, b) => a + b, 0) : 0;
+  const getBuyBonusBg = () => buyBonusPressed ? btnRectPressed : buyBonusHover ? btnRectHover : btnRectNormal;
+  const getSuperFreeSpinsBg = () => superFreeSpinsPressed ? btnRectPressed : superFreeSpinsHover ? btnRectHover : btnRectNormal;
+
+  // ==================== LOADING SCREEN ====================
+  if (isLoading) {
+    return (
+      <div 
+        onClick={() => {
+          // Start music on any click (browser autoplay policy requires user interaction)
+          if (!musicStarted) {
+            handleStartMusic();
           }
-          symbolCounts[cell.symbol.type].count++;
-          symbolCounts[cell.symbol.type].positions.push({ row: rowIndex, col: colIndex });
-        }
-      });
-    });
-
-    // Apply bomb multipliers
-    bombPositions.forEach(bomb => {
-      totalMultiplier *= bomb.multiplier;
-    });
-
-    // SWEET BONANZA STYLE: 8+ of SAME symbol anywhere = WIN
-    // Daha gerçekçi paytable - sadece 8-9 symbol çok az kazanç verir
-    const symbolValues: { [key: string]: { [count: number]: number } } = {
-      purple: { 8: 0.5, 9: 0.7, 10: 1.2, 11: 2.0, 12: 3.5, 13: 6.0, 14: 10.0, 15: 20.0 },
-      plum: { 8: 0.4, 9: 0.6, 10: 1.0, 11: 1.5, 12: 2.5, 13: 4.0, 14: 7.0, 15: 15.0 },
-      red: { 8: 0.35, 9: 0.5, 10: 0.9, 11: 1.3, 12: 2.2, 13: 3.5, 14: 6.0, 15: 12.0 },
-      heart: { 8: 0.3, 9: 0.45, 10: 0.8, 11: 1.2, 12: 2.0, 13: 3.0, 14: 5.0, 15: 10.0 },
-      grape: { 8: 0.25, 9: 0.4, 10: 0.7, 11: 1.0, 12: 1.7, 13: 2.5, 14: 4.0, 15: 8.0 },
-      green: { 8: 0.2, 9: 0.3, 10: 0.5, 11: 0.8, 12: 1.3, 13: 2.0, 14: 3.0, 15: 6.0 },
-      blue: { 8: 0.15, 9: 0.25, 10: 0.4, 11: 0.7, 12: 1.2, 13: 1.8, 14: 2.5, 15: 5.0 },
-      banana: { 8: 0.1, 9: 0.2, 10: 0.35, 11: 0.6, 12: 1.0, 13: 1.5, 14: 2.0, 15: 4.0 },
-    };
-
-    Object.entries(symbolCounts).forEach(([symbolType, data]) => {
-      if (data.count >= 8) {
-        hasWins = true;
-        // Count'a göre kazanç - 8-9 sembol çok az kazanç verir
-        const payoutMultiplier = symbolValues[symbolType]?.[data.count] || 
-                                 symbolValues[symbolType]?.[15] || 0.1;
-        winAmount += bet * payoutMultiplier;
-
-        // Mark ALL matching symbols as winning
-        data.positions.forEach(pos => {
-          newGrid[pos.row][pos.col].isWinning = true;
-        });
-      }
-    });
-
-    // Check for free spins (4+ bombs)
-    if (bombPositions.length >= 4 && freeSpins === 0) {
-      setFreeSpins(10);
-      setFreeSpinMultiplier(1);
-      setShowFreeSpinsModal(true);
-      toast.success("🎉 Free Spins Triggered!");
-    }
-
-    if (hasWins) {
-      const finalWin = Math.floor(winAmount * totalMultiplier);
-      setCurrentWin(finalWin);
-      setLastSpinWin(prev => prev + finalWin);
-      setTotalWin(totalWin + finalWin);
-      setBalance(prev => prev + finalWin);
-      setGrid(newGrid);
-
-      setTimeout(() => {
-        handleCascade(newGrid);
-      }, 800);
-    } else {
-      setIsSpinning(false);
-    }
-  };
-
-  const handleCascade = async (currentGrid: Cell[][]) => {
-    // Adım 1: Kazanan pozisyonları NULL yap (data-level'da)
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        if (currentGrid[row][col].isWinning) {
-          currentGrid[row][col].symbol = null as any;
-          currentGrid[row][col].isWinning = false;
-        }
-      }
-    }
-
-    // Adım 2: Her KOLONDA gravity uygula (column-based)
-    for (let col = 0; col < COLS; col++) {
-      // Bu kolondaki non-null sembolleri topla (ALTTAN YUKARIYA)
-      const columnSymbols: Symbol[] = [];
-      for (let row = ROWS - 1; row >= 0; row--) {
-        if (currentGrid[row][col].symbol !== null) {
-          columnSymbols.push(currentGrid[row][col].symbol);
-        }
-      }
-      
-      // Kaç boş yer var?
-      const emptyCount = ROWS - columnSymbols.length;
-      
-      // Yeni kolonu oluştur: [yeni semboller (üst), mevcut semboller (alt)]
-      const newColumn: Symbol[] = [];
-      
-      // Üstte yeni semboller spawn et
-      for (let i = 0; i < emptyCount; i++) {
-        newColumn.push(generateRandomSymbol(freeSpins > 0));
-      }
-      
-      // Alttan itibaren mevcut sembolleri yerleştir
-      for (let i = columnSymbols.length - 1; i >= 0; i--) {
-        newColumn.push(columnSymbols[i]);
-      }
-      
-      // Kolonu grid'e yaz - SADECE symbol'leri değiştir
-      for (let row = 0; row < ROWS; row++) {
-        currentGrid[row][col].symbol = newColumn[row];
-      }
-    }
-
-    // React'ı güncelle
-    setGrid([...currentGrid]);
-
-    // Yeni win kontrolü
-    setTimeout(() => {
-      checkWins(currentGrid);
-    }, 600);
-  };
-
-  return (
-    <div className="min-h-screen relative overflow-hidden"
-         style={{
-           backgroundImage: `url(${gameBackground})`,
-           backgroundSize: "cover",
-           backgroundPosition: "center",
-           backgroundRepeat: "no-repeat"
-         }}>
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-
-      <div className="relative z-10 flex h-screen">
-        {/* Left Sidebar */}
-        <Sidebar
-          balance={balance}
-          bet={bet}
-          setBet={setBet}
-          freeSpins={freeSpins}
-          freeSpinMultiplier={freeSpinMultiplier}
-        />
-
-        {/* Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 py-8 pb-40">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <img 
-              src={loadingLogo} 
-              alt="Pluffy High Kitchen"
-              className="h-24 md:h-28 w-auto drop-shadow-2xl"
+        }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "linear-gradient(180deg, #1a0a2e 0%, #16082a 50%, #0d0515 100%)",
+          zIndex: 9999,
+          cursor: musicStarted ? "default" : "pointer",
+        }}
+      >
+        {/* Animated background particles */}
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
               style={{
-                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(100,255,100,0.6))"
+                position: "absolute",
+                width: 4 + Math.random() * 6,
+                height: 4 + Math.random() * 6,
+                borderRadius: "50%",
+                background: `radial-gradient(circle, ${Math.random() > 0.5 ? 'rgba(168,85,247,0.6)' : 'rgba(74,222,128,0.6)'} 0%, transparent 70%)`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -100, 0],
+                opacity: [0, 1, 0],
+                scale: [0.5, 1.5, 0.5],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+                ease: "easeInOut",
               }}
             />
+          ))}
+        </div>
+
+        {/* Logo */}
+        <motion.img
+          src={loadingLogoNew}
+          alt="Pluffy High Kitchen"
+          style={{
+            width: isMobile ? "70vw" : "min(400px, 50vw)",
+            maxWidth: "400px",
+            filter: "drop-shadow(0 0 30px rgba(168,85,247,0.5))",
+            marginBottom: "40px",
+          }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ 
+            scale: [0.95, 1.05, 0.95],
+            opacity: 1,
+          }}
+          transition={{
+            scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 0.5 },
+          }}
+        />
+
+        {/* Loading bar */}
+        <div style={{
+          width: isMobile ? "70vw" : "300px",
+          height: "8px",
+          borderRadius: "4px",
+          background: "rgba(255,255,255,0.1)",
+          overflow: "hidden",
+          marginBottom: "30px",
+        }}>
+          <motion.div
+            style={{
+              height: "100%",
+              background: "linear-gradient(90deg, #7c3aed, #a855f7, #22c55e, #7c3aed)",
+              backgroundSize: "200% 100%",
+              borderRadius: "4px",
+            }}
+            initial={{ width: "0%" }}
+            animate={{ 
+              width: "100%",
+              backgroundPosition: ["0% 0%", "100% 0%"],
+            }}
+            transition={{
+              width: { duration: 2, ease: "easeOut" },
+              backgroundPosition: { duration: 1, repeat: Infinity, ease: "linear" },
+            }}
+          />
+        </div>
+
+        {/* Tap to start music hint (shown before music starts) */}
+        {!musicStarted && (
+          <motion.p
+            style={{
+              fontSize: isMobile ? "16px" : "18px",
+              color: "rgba(255,255,255,0.8)",
+              marginBottom: "20px",
+              textAlign: "center",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            🔊 Tap anywhere to start music
+          </motion.p>
+        )}
+
+        {/* Enter button - only show after music starts */}
+        <motion.button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!musicStarted) {
+              handleStartMusic();
+            }
+            handleEnterGame();
+          }}
+          style={{
+            padding: isMobile ? "16px 40px" : "18px 50px",
+            fontSize: isMobile ? "18px" : "22px",
+            fontWeight: 800,
+            color: "white",
+            background: musicStarted 
+              ? "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)"
+              : "linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%)",
+            border: musicStarted 
+              ? "3px solid rgba(74,222,128,0.5)"
+              : "3px solid rgba(168,85,247,0.5)",
+            borderRadius: "16px",
+            cursor: "pointer",
+            boxShadow: musicStarted 
+              ? "0 0 30px rgba(74,222,128,0.4), 0 8px 0 #15803d"
+              : "0 0 30px rgba(168,85,247,0.4), 0 8px 0 #4c1d95",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.5 }}
+          whileHover={{ 
+            scale: 1.05, 
+            boxShadow: musicStarted 
+              ? "0 0 40px rgba(74,222,128,0.6), 0 8px 0 #15803d"
+              : "0 0 40px rgba(168,85,247,0.6), 0 8px 0 #4c1d95" 
+          }}
+          whileTap={{ 
+            scale: 0.95, 
+            boxShadow: musicStarted 
+              ? "0 0 20px rgba(74,222,128,0.4), 0 4px 0 #15803d"
+              : "0 0 20px rgba(168,85,247,0.4), 0 4px 0 #4c1d95" 
+          }}
+        >
+          {musicStarted ? "🎰 Enter Game" : "🎰 Tap to Play"}
+        </motion.button>
+
+        {/* Music playing indicator */}
+        {musicStarted && (
+          <motion.p
+            style={{
+              marginTop: "20px",
+              fontSize: "12px",
+              color: "rgba(74,222,128,0.8)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <motion.span
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+            >
+              🎵
+            </motion.span>
+            Music playing...
+          </motion.p>
+        )}
+      </div>
+    );
+  }
+
+  // ==================== SETTINGS MODAL ====================
+  const SettingsModal = () => (
+    <AnimatePresence>
+      {showSettingsModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "linear-gradient(180deg, rgba(37, 16, 61, 0.98), rgba(18, 7, 34, 0.99))",
+              borderRadius: "20px",
+              padding: "30px",
+              minWidth: isMobile ? "85vw" : "320px",
+              border: "2px solid rgba(168,85,247,0.4)",
+              boxShadow: "0 0 40px rgba(168,85,247,0.3)",
+            }}
+          >
+            {/* Header */}
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center",
+              marginBottom: "24px",
+            }}>
+              <h2 style={{ 
+                color: "white", 
+                fontSize: "22px", 
+                fontWeight: 800,
+                margin: 0,
+              }}>
+                ⚙️ Settings
+              </h2>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowSettingsModal(false)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.1)",
+                  border: "none",
+                  color: "white",
+                  fontSize: "18px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ✕
+              </motion.button>
+            </div>
+
+            {/* Sound Toggle */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "16px",
+              background: "rgba(255,255,255,0.05)",
+              borderRadius: "12px",
+              marginBottom: "12px",
+            }}>
+              <span style={{ color: "white", fontSize: "16px", fontWeight: 600 }}>
+                🔊 Sound Effects
+              </span>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleToggleSound}
+                style={{
+                  width: "60px",
+                  height: "32px",
+                  borderRadius: "16px",
+                  background: isSoundMuted 
+                    ? "rgba(255,255,255,0.2)" 
+                    : "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)",
+                  border: "none",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background 0.2s",
+                }}
+              >
+                <motion.div
+                  animate={{ x: isSoundMuted ? 2 : 28 }}
+                  style={{
+                    position: "absolute",
+                    top: "3px",
+                    left: "0",
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    background: "white",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                  }}
+                />
+              </motion.button>
+            </div>
+
+            {/* Sound status text */}
+            <p style={{
+              color: "rgba(255,255,255,0.5)",
+              fontSize: "12px",
+              textAlign: "center",
+              margin: "16px 0 0 0",
+            }}>
+              {isSoundMuted ? "🔇 Sound is OFF" : "🔊 Sound is ON"}
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // ==================== MOBILE LAYOUT (COMPLETELY REDESIGNED) ====================
+  if (isMobile) {
+    return (
+      <div 
+        style={{ 
+          position: "fixed",
+          inset: 0,
+          width: "100vw", 
+          height: "100dvh", // Dynamic viewport height for mobile (fallback to 100vh)
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          backgroundImage: `url(${gameBackground})`, 
+          backgroundSize: "cover", 
+          backgroundPosition: "center",
+          touchAction: "manipulation",
+        }}
+      >
+        {/* Free Spins Overlay */}
+        <AnimatePresence>
+          {isFreeSpinMode && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              style={{
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                zIndex: 0,
+                background: `radial-gradient(ellipse at 50% 30%, rgba(74,222,128,0.35) 0%, transparent 60%), linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(88,28,135,0.4) 100%)`
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ==================== TOP BAR ==================== */}
+        <div 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            padding: "clamp(6px, 2vw, 12px) clamp(10px, 3vw, 16px)",
+            paddingTop: "max(env(safe-area-inset-top), clamp(6px, 2vw, 12px))",
+            background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%)",
+            zIndex: 50,
+            flexShrink: 0,
+          }}
+        >
+          {/* Logo - Top Left, 20% larger */}
+          <img 
+            src={loadingLogoNew} 
+            alt="Logo" 
+            style={{ 
+              height: "clamp(40px, 10vw, 55px)", // 20% larger
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.9))",
+              objectFit: "contain",
+            }} 
+          />
+          
+          {/* Right side: Free Spins Counter + Balance */}
+          <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px, 2vw, 14px)" }}>
+            {/* Free Spins Counter */}
+            {isFreeSpinMode && (
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                style={{ 
+                  background: "linear-gradient(180deg, rgba(22,163,74,0.95) 0%, rgba(21,128,61,0.9) 100%)", 
+                  padding: "clamp(4px, 1vw, 8px) clamp(10px, 2.5vw, 16px)", 
+                  borderRadius: "clamp(10px, 2vw, 14px)", 
+                  border: "2px solid rgba(74,222,128,0.7)",
+                  boxShadow: "0 0 15px rgba(74,222,128,0.4)",
+                }}
+              >
+                <div style={{ fontSize: "clamp(8px, 2vw, 10px)", color: "#a7f3d0", fontWeight: 600, textAlign: "center" }}>FREE SPINS</div>
+                <div style={{ fontSize: "clamp(16px, 4vw, 22px)", color: "white", fontWeight: 900, textAlign: "center", textShadow: "0 0 10px rgba(74,222,128,0.8)" }}>
+                  {freeSpinsRemaining}<span style={{ fontSize: "clamp(10px, 2.5vw, 14px)", color: "#86efac" }}>/{freeSpinsTotal}</span>
+                </div>
+              </motion.div>
+            )}
+            
+            {/* Balance */}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "clamp(8px, 2vw, 10px)", color: "#9ca3af", textTransform: "uppercase", fontWeight: 600 }}>Balance</div>
+              <div style={{ fontSize: "clamp(14px, 3.5vw, 18px)", color: "white", fontWeight: 700 }}>₺{balance.toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================== MAIN GAME AREA ==================== */}
+        <div 
+          style={{ 
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "clamp(4px, 1.5vw, 10px)",
+            minHeight: 0, // Important for flex shrinking
+            position: "relative",
+          }}
+        >
+          {/* Free Spins Total Win Banner */}
+          {isFreeSpinMode && freeSpinsTotalWin > 0 && (
+            <motion.div 
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              style={{ 
+                position: "absolute",
+                top: "clamp(4px, 1vw, 10px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 30,
+                background: "linear-gradient(180deg, rgba(22,163,74,0.95) 0%, rgba(21,128,61,0.9) 100%)", 
+                padding: "clamp(6px, 1.5vw, 10px) clamp(16px, 4vw, 28px)", 
+                borderRadius: "clamp(12px, 3vw, 18px)", 
+                border: "2px solid rgba(74,222,128,0.7)",
+                boxShadow: "0 4px 20px rgba(74,222,128,0.4)",
+              }}
+            >
+              <div style={{ fontSize: "clamp(8px, 2vw, 10px)", color: "#fef08a", fontWeight: 700, textAlign: "center" }}>TOTAL WIN</div>
+              <div style={{ fontSize: "clamp(18px, 5vw, 26px)", color: "#fbbf24", fontWeight: 900, textAlign: "center" }}>₺{freeSpinsTotalWin.toLocaleString()}</div>
+              {totalMultiplier > 0 && (
+                <div style={{ fontSize: "clamp(12px, 3vw, 16px)", color: "#c4b5fd", fontWeight: 700, textAlign: "center" }}>x{totalMultiplier}</div>
+              )}
+            </motion.div>
+          )}
+
+          {/* GAME BOARD - 80% of screen width, centered */}
+          <motion.div 
+            style={{
+              width: "min(80vw, 95vh * 0.7)", // 80% width but respect aspect ratio
+              maxWidth: "600px",
+              aspectRatio: "6 / 5", // Match grid ratio
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "clamp(4px, 1vw, 8px)",
+              borderRadius: "clamp(12px, 2.5vw, 18px)",
+            }}
+            animate={{ 
+              background: isFreeSpinMode 
+                ? "linear-gradient(135deg, #16a34a 0%, #166534 100%)" 
+                : "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)",
+              boxShadow: isFreeSpinMode 
+                ? "0 0 40px rgba(74,222,128,0.5), inset 0 0 20px rgba(74,222,128,0.1)" 
+                : "0 0 40px rgba(126,58,242,0.4), inset 0 0 20px rgba(126,58,242,0.1)",
+            }}
+          >
+            <div 
+              style={{ 
+                width: "100%", 
+                height: "100%",
+                borderRadius: "clamp(8px, 2vw, 14px)",
+                overflow: "hidden",
+                transform: "scale(0.95)", // Slight padding inside
+                transformOrigin: "center center",
+              }}
+            >
+              <GameBoard grid={grid} isSpinning={isSpinning} isFreeSpinMode={isFreeSpinMode} />
+            </div>
           </motion.div>
 
-          <GameBoard grid={grid} isSpinning={isSpinning} />
+          {/* Cascade History Box - Bottom Left */}
+          <AnimatePresence>
+            {cascadeHistory.length > 0 && (
+              <CascadeHistoryBox items={cascadeHistory} currencySymbol="₺" />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ==================== BONUS BUTTONS (Below Board) ==================== */}
+        {!isFreeSpinMode && (
+          <div 
+            style={{ 
+              display: "flex", 
+              gap: "clamp(12px, 3vw, 20px)", 
+              justifyContent: "center",
+              padding: "clamp(8px, 2vw, 14px) clamp(12px, 3vw, 20px)",
+              flexShrink: 0,
+            }}
+          >
+            {/* Buy Bonus Button */}
+            <motion.button 
+              whileTap={{ scale: 0.95 }} 
+              onClick={handleBuyBonus}
+              style={{ 
+                flex: 1, 
+                maxWidth: "clamp(140px, 40vw, 180px)", 
+                height: "clamp(54px, 14vw, 70px)", 
+                position: "relative",
+                touchAction: "manipulation",
+              }}
+            >
+              <img src={btnRectNormal} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "white", fontWeight: 700, fontSize: "clamp(10px, 2.5vw, 13px)" }}>BUY BONUS</span>
+                <span style={{ color: "white", fontWeight: 900, fontSize: "clamp(14px, 3.5vw, 18px)" }}>₺{(bet * 100).toLocaleString()}</span>
+              </div>
+            </motion.button>
+
+            {/* Super Free Spins Button */}
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              style={{ 
+                flex: 1, 
+                maxWidth: "clamp(140px, 40vw, 180px)", 
+                height: "clamp(54px, 14vw, 70px)", 
+                position: "relative",
+                touchAction: "manipulation",
+              }}
+            >
+              <img src={btnRectNormal} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#c4b5fd", fontWeight: 700, fontSize: "clamp(8px, 2vw, 10px)" }}>SUPER</span>
+                <span style={{ color: "white", fontWeight: 700, fontSize: "clamp(10px, 2.5vw, 13px)" }}>FREE SPINS</span>
+                <span style={{ color: "white", fontWeight: 900, fontSize: "clamp(14px, 3.5vw, 18px)" }}>₺{(bet * 200).toLocaleString()}</span>
+              </div>
+            </motion.button>
+          </div>
+        )}
+
+        {/* ==================== BOTTOM CONTROL PANEL (Fixed) ==================== */}
+        <div 
+          style={{ 
+            background: "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.95) 100%)",
+            padding: "clamp(10px, 2.5vw, 16px) clamp(12px, 3vw, 20px)",
+            paddingBottom: "max(env(safe-area-inset-bottom), clamp(10px, 2.5vw, 16px))",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "clamp(8px, 2vw, 16px)",
+            flexShrink: 0,
+            zIndex: 50,
+          }}
+        >
+          {/* Left: Bet Controls */}
+          <div style={{ display: "flex", alignItems: "center", gap: "clamp(6px, 1.5vw, 12px)" }}>
+            {/* Decrease Bet Button */}
+            <motion.button 
+              whileTap={{ scale: 0.85 }} 
+              onClick={handleDecreaseBet} 
+              disabled={isFreeSpinMode || isSpinning}
+              style={{ 
+                width: "clamp(40px, 10vw, 52px)", 
+                height: "clamp(40px, 10vw, 52px)", 
+                borderRadius: "50%", 
+                background: "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)", 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                color: "white", 
+                fontWeight: 900, 
+                fontSize: "clamp(20px, 5vw, 28px)",
+                opacity: (isFreeSpinMode || isSpinning) ? 0.4 : 1,
+                border: "2px solid rgba(255,255,255,0.2)",
+                boxShadow: "0 4px 0 #374151, 0 6px 12px rgba(0,0,0,0.3)",
+                touchAction: "manipulation",
+              }}
+            >−</motion.button>
+            
+            {/* Bet Display */}
+            <div style={{ textAlign: "center", minWidth: "clamp(60px, 18vw, 90px)" }}>
+              <div style={{ fontSize: "clamp(9px, 2.2vw, 11px)", color: "#9ca3af", textTransform: "uppercase", fontWeight: 600 }}>Bet</div>
+              <div style={{ fontSize: "clamp(16px, 4.5vw, 22px)", color: "white", fontWeight: 800 }}>₺{bet}</div>
+            </div>
+            
+            {/* Increase Bet Button */}
+            <motion.button 
+              whileTap={{ scale: 0.85 }} 
+              onClick={handleIncreaseBet} 
+              disabled={isFreeSpinMode || isSpinning}
+              style={{ 
+                width: "clamp(40px, 10vw, 52px)", 
+                height: "clamp(40px, 10vw, 52px)", 
+                borderRadius: "50%", 
+                background: "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)", 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                color: "white", 
+                fontWeight: 900, 
+                fontSize: "clamp(20px, 5vw, 28px)",
+                opacity: (isFreeSpinMode || isSpinning) ? 0.4 : 1,
+                border: "2px solid rgba(255,255,255,0.2)",
+                boxShadow: "0 4px 0 #374151, 0 6px 12px rgba(0,0,0,0.3)",
+                touchAction: "manipulation",
+              }}
+            >+</motion.button>
+          </div>
+
+          {/* Center: Win Display */}
+          <div style={{ textAlign: "center", minWidth: "clamp(70px, 20vw, 100px)" }}>
+            <div style={{ fontSize: "clamp(9px, 2.2vw, 11px)", color: "#9ca3af", textTransform: "uppercase", fontWeight: 600 }}>Win</div>
+            <div 
+              style={{ 
+                fontSize: "clamp(18px, 5vw, 26px)", 
+                fontWeight: 900, 
+                color: lastSpinWin > 0 ? "#fbbf24" : "#ffffff",
+                textShadow: lastSpinWin > 0 ? "0 0 10px rgba(251,191,36,0.5)" : "none",
+              }}
+            >₺{lastSpinWin.toLocaleString()}</div>
+          </div>
+
+          {/* Right: Spin Button (Large) */}
+          <motion.button 
+            whileTap={{ scale: 0.9 }} 
+            onClick={isFreeSpinMode ? triggerFreeSpin : handleSpin} 
+            disabled={isSpinning || isCascading}
+            style={{ 
+              width: "clamp(70px, 18vw, 95px)", 
+              height: "clamp(70px, 18vw, 95px)", 
+              opacity: (isSpinning || isCascading) ? 0.6 : 1,
+              touchAction: "manipulation",
+              flexShrink: 0,
+            }}
+          >
+            <img 
+              src={isSpinning ? btnSpinPressed : btnSpinNormal} 
+              alt="Spin" 
+              style={{ 
+                width: "100%", 
+                height: "100%", 
+                objectFit: "contain", 
+                filter: isFreeSpinMode 
+                  ? "drop-shadow(0 0 20px rgba(74,222,128,0.7))" 
+                  : "drop-shadow(0 6px 12px rgba(0,0,0,0.5))" 
+              }} 
+            />
+          </motion.button>
+        </div>
+
+        {/* ==================== WIN BREAKDOWN PANEL (Right side, responsive) ==================== */}
+        <WinBreakdownPanel breakdown={winBreakdown} currencySymbol="₺" />
+
+        {/* ==================== MODALS ==================== */}
+        <WinDisplay currentWin={currentWin} bet={bet} onDismiss={() => setCurrentWin(0)} />
+        <FreeSpinsModal open={showFreeSpinsModal} onOpenChange={setShowFreeSpinsModal} freeSpins={pendingFreeSpins} onStart={startFreeSpins} />
+        <FreeSpinsEndModal open={showFreeSpinsEndModal} onClose={handleFreeSpinsEndClose} totalWin={freeSpinsTotalWin} bet={bet} />
+        <BuyBonusModal open={showBuyBonusModal} onOpenChange={setShowBuyBonusModal} cost={bet * 100} onConfirm={confirmBuyBonus} />
+        <SettingsModal />
+      </div>
+    );
+  }
+
+  // ==================== DESKTOP LAYOUT ====================
+  return (
+    <div 
+      className="game-wrapper"
+      style={{ 
+        position: "relative",
+        width: "100vw", 
+        height: "100vh", 
+        display: "flex",
+        overflow: "hidden",
+        backgroundImage: `url(${gameBackground})`, 
+        backgroundSize: "cover", 
+        backgroundPosition: "center" 
+      }}
+    >
+      {/* Free Spins Overlay */}
+      <AnimatePresence>
+        {isFreeSpinMode && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 pointer-events-none z-0"
+            style={{ background: `radial-gradient(ellipse at 30% 20%, rgba(74,222,128,0.3) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(168,85,247,0.4) 0%, transparent 50%), linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(88,28,135,0.5) 100%)` }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* LEFT SIDEBAR */}
+      <div className="left-sidebar" style={{ width: "260px", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "40px", zIndex: 30 }}>
+        <img src={loadingLogoNew} alt="Logo" className="logo" style={{ width: "200px", marginBottom: "50px", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.8))" }} />
+
+        {isFreeSpinMode && (
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-52 rounded-2xl p-4 text-center mb-6"
+            style={{ background: "linear-gradient(180deg, rgba(22,163,74,0.95) 0%, rgba(21,128,61,0.9) 100%)", border: "3px solid rgba(74,222,128,0.6)", boxShadow: "0 0 30px rgba(74,222,128,0.4)" }}>
+            <div className="text-green-200 text-xs font-bold uppercase">Free Spins</div>
+            <div className="text-4xl font-black text-white" style={{ textShadow: "0 0 15px rgba(74,222,128,0.8)" }}>{freeSpinsRemaining}<span className="text-lg text-green-300">/{freeSpinsTotal}</span></div>
+            <div className="mt-2 pt-2 border-t border-green-400/30"><div className="text-yellow-200 text-xs font-bold">Total Win</div><div className="text-xl font-black text-yellow-400">₺{freeSpinsTotalWin.toLocaleString()}</div></div>
+            {totalMultiplier > 0 && (<div className="mt-2 pt-2 border-t border-green-400/30"><div className="text-purple-200 text-xs font-bold">Multiplier</div><div className="text-xl font-black text-purple-300">x{totalMultiplier}</div></div>)}
+          </motion.div>
+        )}
+
+        <div className="bonus-buttons" style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "auto", marginBottom: "140px" }}>
+          {!isFreeSpinMode && (
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuyBonus}
+              onMouseEnter={() => setBuyBonusHover(true)} onMouseLeave={() => { setBuyBonusHover(false); setBuyBonusPressed(false); }}
+              onMouseDown={() => setBuyBonusPressed(true)} onMouseUp={() => setBuyBonusPressed(false)}
+              className="relative" style={{ width: "220px", height: "90px" }}>
+              <img src={getBuyBonusBg()} alt="" className="absolute inset-0 w-full h-full object-contain" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <img src={btnTextBuyBonus} alt="Buy Bonus" className="h-6 object-contain" />
+                <span className="text-white font-black text-xl mt-1" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>₺{(bet * 100).toLocaleString()}</span>
+              </div>
+            </motion.button>
+          )}
+          {!isFreeSpinMode && (
+            <motion.button whileTap={{ scale: 0.97 }}
+              onMouseEnter={() => setSuperFreeSpinsHover(true)} onMouseLeave={() => { setSuperFreeSpinsHover(false); setSuperFreeSpinsPressed(false); }}
+              onMouseDown={() => setSuperFreeSpinsPressed(true)} onMouseUp={() => setSuperFreeSpinsPressed(false)}
+              className="relative" style={{ width: "220px", height: "90px" }}>
+              <img src={getSuperFreeSpinsBg()} alt="" className="absolute inset-0 w-full h-full object-contain" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-purple-200 text-[10px] font-bold uppercase" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>Super</span>
+                <img src={btnTextFreeSpins} alt="Free Spins" className="h-5 object-contain" />
+                <span className="text-white font-black text-xl mt-1" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>₺{(bet * 200).toLocaleString()}</span>
+              </div>
+            </motion.button>
+          )}
         </div>
       </div>
 
-      <BottomBar
-        balance={balance}
-        bet={bet}
-        onSpin={handleSpin}
-        isSpinning={isSpinning}
-        lastSpinWin={lastSpinWin}
-      />
+      {/* CENTER: GAME BOARD */}
+      <div className="game-center" style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", paddingBottom: "120px" }}>
+        <motion.div className="game-board rounded-2xl p-1.5" style={{ transformOrigin: "center top", transform: "scale(1.05)" }}
+          animate={{ background: isFreeSpinMode ? "linear-gradient(135deg, #16a34a 0%, #166534 100%)" : "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", boxShadow: isFreeSpinMode ? "0 0 60px rgba(74,222,128,0.5)" : "0 0 60px rgba(126,58,242,0.4)" }}>
+          <div className="rounded-xl overflow-hidden">
+            <GameBoard grid={grid} isSpinning={isSpinning} isFreeSpinMode={isFreeSpinMode} />
+          </div>
+        </motion.div>
+      </div>
 
-      <WinDisplay currentWin={currentWin} onDismiss={() => setCurrentWin(0)} />
+      {/* WIN BREAKDOWN PANEL */}
+      <WinBreakdownPanel breakdown={winBreakdown} currencySymbol="₺" />
 
-      <FreeSpinsModal
-        open={showFreeSpinsModal}
-        onOpenChange={setShowFreeSpinsModal}
-        freeSpins={10}
-      />
+      {/* BOTTOM LEFT BUTTONS */}
+      <div className="absolute left-6 bottom-6 flex items-center gap-3 z-30">
+        <motion.button 
+          whileHover={{ scale: 1.1 }} 
+          whileTap={{ scale: 0.9 }} 
+          onClick={() => setShowSettingsModal(true)}
+          className="relative w-12 h-12"
+        >
+          <img src={btnSquareNormal} alt="" className="w-full h-full object-contain" />
+          <img src={btnIconSettings} alt="Settings" className="absolute inset-0 w-7 h-7 m-auto object-contain" />
+        </motion.button>
+        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="relative w-12 h-12">
+          <img src={btnSquareNormal} alt="" className="w-full h-full object-contain" />
+          <img src={btnIconInfo} alt="Info" className="absolute inset-0 w-7 h-7 m-auto object-contain" />
+        </motion.button>
+      </div>
+
+      {/* BOTTOM PANEL */}
+      <div className="bottom-panel" style={{ position: "absolute", bottom: 0, width: "100%", height: "100px", display: "flex", justifyContent: "center", alignItems: "center", background: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 100%)", zIndex: 20 }}>
+        <div className="flex items-center gap-16 px-8">
+          <div className="text-center">
+            <div className="text-gray-400 text-xs uppercase tracking-wide">Credit</div>
+            <div className="text-2xl font-bold text-white">₺{balance.toLocaleString()}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-gray-400 text-xs uppercase tracking-wide">Bet</div>
+            <div className="text-2xl font-bold text-white">₺{bet.toLocaleString()}</div>
+          </div>
+          <div className="text-center min-w-[120px]">
+            <div className="text-gray-400 text-xs uppercase tracking-wide">Win</div>
+            <div className="text-2xl font-bold" style={{ color: lastSpinWin > 0 ? "#fbbf24" : "#ffffff" }}>₺{lastSpinWin.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* BOTTOM RIGHT BUTTONS */}
+      <div className="absolute right-8 bottom-5 flex items-center gap-4 z-30">
+        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleDecreaseBet} disabled={isFreeSpinMode || isSpinning}
+          className="w-11 h-11 rounded-full flex items-center justify-center text-2xl font-bold text-white disabled:opacity-40"
+          style={{ background: "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)", boxShadow: "0 3px 0 #374151" }}>−</motion.button>
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={isFreeSpinMode ? triggerFreeSpin : handleSpin} disabled={isSpinning || isCascading}
+          className="relative w-20 h-20 disabled:opacity-60">
+          <img src={isSpinning ? btnSpinPressed : btnSpinNormal} alt="Spin" className="w-full h-full object-contain"
+            style={{ filter: isFreeSpinMode ? "drop-shadow(0 0 20px rgba(74,222,128,0.6))" : "drop-shadow(0 4px 10px rgba(0,0,0,0.5))" }} />
+        </motion.button>
+        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleIncreaseBet} disabled={isFreeSpinMode || isSpinning}
+          className="w-11 h-11 rounded-full flex items-center justify-center text-2xl font-bold text-white disabled:opacity-40"
+          style={{ background: "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)", boxShadow: "0 3px 0 #374151" }}>+</motion.button>
+      </div>
+
+      {/* MODALS */}
+      <WinDisplay currentWin={currentWin} bet={bet} onDismiss={() => setCurrentWin(0)} />
+      <FreeSpinsModal open={showFreeSpinsModal} onOpenChange={setShowFreeSpinsModal} freeSpins={pendingFreeSpins} onStart={startFreeSpins} />
+      <FreeSpinsEndModal open={showFreeSpinsEndModal} onClose={handleFreeSpinsEndClose} totalWin={freeSpinsTotalWin} bet={bet} />
+      <BuyBonusModal open={showBuyBonusModal} onOpenChange={setShowBuyBonusModal} cost={bet * 100} onConfirm={confirmBuyBonus} />
+      <SettingsModal />
     </div>
   );
 };
