@@ -158,6 +158,7 @@ export const SlotGame = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(0.7); // 0 to 1
   
   const [balance, setBalance] = useState(100000);
   const [bet, setBet] = useState(10);
@@ -292,6 +293,14 @@ export const SlotGame = () => {
       }
     }
   }, [isSoundMuted]);
+  
+  // Handle volume change
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    setMusicVolume(newVolume);
+    if (gameMusicRef.current) {
+      gameMusicRef.current.volume = newVolume;
+    }
+  }, []);
 
   const ROWS = 5;
   const COLS = 6;
@@ -882,7 +891,8 @@ export const SlotGame = () => {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.8)",
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(8px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -896,40 +906,43 @@ export const SlotGame = () => {
             exit={{ scale: 0.8, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(180deg, rgba(37, 16, 61, 0.98), rgba(18, 7, 34, 0.99))",
-              borderRadius: "20px",
-              padding: "30px",
-              minWidth: isMobile ? "85vw" : "320px",
-              border: "2px solid rgba(168,85,247,0.4)",
-              boxShadow: "0 0 40px rgba(168,85,247,0.3)",
+              position: "relative",
+              minWidth: isMobile ? "85vw" : "420px",
+              padding: "20px",
             }}
           >
-            {/* Header */}
-            <div style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              marginBottom: "24px",
+            {/* Green Vine Frame Background */}
+            <div style={{
+              position: "absolute",
+              inset: "-40px",
+              backgroundImage: "radial-gradient(ellipse at top left, rgba(134,239,172,0.3) 0%, transparent 40%), radial-gradient(ellipse at bottom right, rgba(134,239,172,0.3) 0%, transparent 40%)",
+              pointerEvents: "none",
+            }} />
+            
+            {/* Main Content Box */}
+            <div style={{
+              background: "linear-gradient(180deg, rgba(30, 20, 40, 0.98) 0%, rgba(15, 10, 25, 0.99) 100%)",
+              borderRadius: "16px",
+              border: "4px solid #8B5A2B",
+              boxShadow: "0 0 60px rgba(134,239,172,0.2), inset 0 0 30px rgba(0,0,0,0.5)",
+              padding: "40px 50px",
+              position: "relative",
             }}>
-              <h2 style={{ 
-                color: "white", 
-                fontSize: "22px", 
-                fontWeight: 800,
-                margin: 0,
-              }}>
-                ⚙️ Settings
-              </h2>
+              {/* Close Button */}
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowSettingsModal(false)}
                 style={{
-                  width: "36px",
-                  height: "36px",
+                  position: "absolute",
+                  top: "12px",
+                  right: "12px",
+                  width: "32px",
+                  height: "32px",
                   borderRadius: "50%",
                   background: "rgba(255,255,255,0.1)",
-                  border: "none",
+                  border: "2px solid rgba(255,255,255,0.2)",
                   color: "white",
-                  fontSize: "18px",
+                  fontSize: "16px",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -938,62 +951,192 @@ export const SlotGame = () => {
               >
                 ✕
               </motion.button>
-            </div>
 
-            {/* Sound Toggle */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "16px",
-              background: "rgba(255,255,255,0.05)",
-              borderRadius: "12px",
-              marginBottom: "12px",
-            }}>
-              <span style={{ color: "white", fontSize: "16px", fontWeight: 600 }}>
-                🔊 Sound Effects
-              </span>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={handleToggleSound}
-                style={{
-                  width: "60px",
-                  height: "32px",
-                  borderRadius: "16px",
-                  background: isSoundMuted 
-                    ? "rgba(255,255,255,0.2)" 
-                    : "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)",
-                  border: "none",
-                  cursor: "pointer",
-                  position: "relative",
-                  transition: "background 0.2s",
-                }}
-              >
-                <motion.div
-                  animate={{ x: isSoundMuted ? 2 : 28 }}
-                  style={{
-                    position: "absolute",
-                    top: "3px",
-                    left: "0",
-                    width: "26px",
-                    height: "26px",
-                    borderRadius: "50%",
-                    background: "white",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                  }}
-                />
-              </motion.button>
-            </div>
+              {/* SETTINGS Title */}
+              <h2 style={{ 
+                textAlign: "center",
+                color: "#86efac",
+                fontSize: "36px", 
+                fontWeight: 900,
+                margin: "0 0 40px 0",
+                textShadow: "0 4px 0 rgba(0,0,0,0.3), 0 0 20px rgba(134,239,172,0.5)",
+                fontFamily: "'Fredoka One', 'Comic Sans MS', cursive",
+                letterSpacing: "2px",
+              }}>
+                SETTINGS
+              </h2>
 
-            {/* Sound status text */}
-            <p style={{
-              color: "rgba(255,255,255,0.5)",
-              fontSize: "12px",
-              textAlign: "center",
-              margin: "16px 0 0 0",
-            }}>
-              {isSoundMuted ? "🔇 Sound is OFF" : "🔊 Sound is ON"}
-            </p>
+              {/* SOUND Row - Music Toggle */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "28px",
+              }}>
+                <span style={{ 
+                  color: "#86efac", 
+                  fontSize: "22px", 
+                  fontWeight: 800,
+                  textShadow: "0 2px 0 rgba(0,0,0,0.3), 0 0 10px rgba(134,239,172,0.3)",
+                  fontFamily: "'Fredoka One', 'Comic Sans MS', cursive",
+                }}>
+                  SOUND
+                </span>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  {/* ON Button */}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (isSoundMuted) handleToggleSound();
+                    }}
+                    style={{
+                      padding: "8px 20px",
+                      fontSize: "16px",
+                      fontWeight: 800,
+                      color: "white",
+                      background: !isSoundMuted 
+                        ? "linear-gradient(180deg, #86efac 0%, #22c55e 50%, #16a34a 100%)"
+                        : "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)",
+                      border: !isSoundMuted ? "3px solid #4ade80" : "3px solid #374151",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      boxShadow: !isSoundMuted 
+                        ? "0 4px 0 #15803d, 0 0 15px rgba(74,222,128,0.4)"
+                        : "0 4px 0 #1f2937",
+                      textShadow: "0 2px 0 rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    ON
+                  </motion.button>
+                  {/* OFF Button */}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (!isSoundMuted) handleToggleSound();
+                    }}
+                    style={{
+                      padding: "8px 20px",
+                      fontSize: "16px",
+                      fontWeight: 800,
+                      color: "white",
+                      background: isSoundMuted 
+                        ? "linear-gradient(180deg, #fca5a5 0%, #ef4444 50%, #dc2626 100%)"
+                        : "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)",
+                      border: isSoundMuted ? "3px solid #f87171" : "3px solid #374151",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      boxShadow: isSoundMuted 
+                        ? "0 4px 0 #b91c1c, 0 0 15px rgba(239,68,68,0.4)"
+                        : "0 4px 0 #1f2937",
+                      textShadow: "0 2px 0 rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    OFF
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* VOLUME Row - Slider */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "28px",
+              }}>
+                <span style={{ 
+                  color: "#86efac", 
+                  fontSize: "22px", 
+                  fontWeight: 800,
+                  textShadow: "0 2px 0 rgba(0,0,0,0.3), 0 0 10px rgba(134,239,172,0.3)",
+                  fontFamily: "'Fredoka One', 'Comic Sans MS', cursive",
+                }}>
+                  VOLUME
+                </span>
+                <div style={{ 
+                  flex: 1, 
+                  marginLeft: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                }}>
+                  {/* Volume Slider */}
+                  <div style={{
+                    position: "relative",
+                    width: "100%",
+                    height: "12px",
+                    background: "linear-gradient(180deg, #374151 0%, #1f2937 100%)",
+                    borderRadius: "6px",
+                    border: "2px solid #4b5563",
+                  }}>
+                    {/* Filled Part */}
+                    <div style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      height: "100%",
+                      width: `${musicVolume * 100}%`,
+                      background: "linear-gradient(180deg, #86efac 0%, #22c55e 100%)",
+                      borderRadius: "4px",
+                      boxShadow: "0 0 10px rgba(134,239,172,0.5)",
+                    }} />
+                    {/* Slider Thumb */}
+                    <motion.div
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0}
+                      onDrag={(event, info) => {
+                        const target = event.target as HTMLElement;
+                        const parent = target?.parentElement;
+                        if (parent) {
+                          const rect = parent.getBoundingClientRect();
+                          const x = Math.max(0, Math.min(info.point.x - rect.left, rect.width));
+                          const newVolume = x / rect.width;
+                          handleVolumeChange(Math.max(0, Math.min(1, newVolume)));
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: `calc(${musicVolume * 100}% - 14px)`,
+                        top: "-8px",
+                        width: "28px",
+                        height: "28px",
+                        background: "linear-gradient(180deg, #a7f3d0 0%, #22c55e 100%)",
+                        borderRadius: "6px",
+                        border: "3px solid #86efac",
+                        boxShadow: "0 4px 0 #15803d, 0 0 15px rgba(134,239,172,0.5)",
+                        cursor: "grab",
+                      }}
+                    />
+                  </div>
+                  {/* Click to set volume */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={musicVolume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Volume percentage display */}
+              <p style={{
+                color: "rgba(134,239,172,0.7)",
+                fontSize: "14px",
+                textAlign: "center",
+                margin: "20px 0 0 0",
+                fontWeight: 600,
+              }}>
+                Volume: {Math.round(musicVolume * 100)}%
+              </p>
+            </div>
           </motion.div>
         </motion.div>
       )}
