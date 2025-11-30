@@ -6,6 +6,7 @@ import { FreeSpinsEndModal } from "./game/FreeSpinsEndModal";
 import { BuyBonusModal } from "./game/BuyBonusModal";
 import { WinDisplay } from "./game/WinDisplay";
 import { WinBreakdownPanel, WinLine, WinBreakdown } from "./game/WinBreakdownPanel";
+import { WinAnimations } from "./game/WinAnimations";
 import { SoundManager } from "@/game/SoundManager";
 import { toast } from "sonner";
 // Import from centralized symbol config
@@ -28,6 +29,7 @@ import btnRectHover from "@/assets/btn-rect-hover.png";
 import btnRectPressed from "@/assets/btn-rect-pressed.png";
 import btnTextBuyBonus from "@/assets/btn-text-buybonus.png";
 import btnTextFreeSpins from "@/assets/btn-text-freespins.png";
+import btnTextAuto from "@/assets/btn-text-auto.png";
 // Import centralized timing config
 import { animationTimings, wait as waitMs } from "@/game/config/spinConfig";
 
@@ -183,6 +185,14 @@ export const SlotGame = () => {
   
   const [winBreakdown, setWinBreakdown] = useState<WinBreakdown>([]);
   const [cascadeHistory, setCascadeHistory] = useState<CascadeItem[]>([]);
+  
+  // Autoplay state
+  const [isAutoplay, setIsAutoplay] = useState(false);
+  const [autoplaySpinsRemaining, setAutoplaySpinsRemaining] = useState(0);
+  
+  // Win FX animation state
+  const [showWinFx, setShowWinFx] = useState(false);
+  const [showBigWin, setShowBigWin] = useState(false);
   const tumbleIndexRef = useRef(0);
   const spinIdRef = useRef(0);
   const spinStartTimeRef = useRef(0);
@@ -204,10 +214,10 @@ export const SlotGame = () => {
   const [musicStarted, setMusicStarted] = useState(false);
 
   // Initialize sounds only
-  useEffect(() => { 
+  useEffect(() => {
     SoundManager.init();
   }, []);
-  
+
   useEffect(() => { freeSpinsRemainingRef.current = freeSpinsRemaining; }, [freeSpinsRemaining]);
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
   useEffect(() => { freeSpinsTotalWinRef.current = freeSpinsTotalWin; }, [freeSpinsTotalWin]);
@@ -336,6 +346,12 @@ export const SlotGame = () => {
       
       if (finalWin >= betRef.current * 20) { SoundManager.play("win_big"); } else { SoundManager.play("win_small"); }
       
+      // Trigger BigWin animation for large wins (10x+ bet)
+      if (finalWin >= betRef.current * 10) {
+        setShowBigWin(true);
+        setTimeout(() => setShowBigWin(false), 3000); // Show for 3 seconds
+      }
+      
       // Update win displays
       setCurrentWin(finalWin); 
       setLastSpinWin(finalWin); 
@@ -378,7 +394,7 @@ export const SlotGame = () => {
     if (gameModeRef.current === "freespins") { 
       const remaining = freeSpinsRemainingRef.current; 
       if (remaining > 0) { 
-        setTimeout(() => { 
+    setTimeout(() => {
           if (gameModeRef.current === "freespins" && freeSpinsRemainingRef.current > 0) { 
             triggerFreeSpin(); 
           } 
@@ -399,20 +415,20 @@ export const SlotGame = () => {
     const symbolCounts: Record<string, { count: number; positions: { row: number; col: number }[] }> = {};
     const scatterPositions: { row: number; col: number }[] = []; 
     const newMultipliers: number[] = [];
-    
-    currentGrid.forEach((row, rowIndex) => { 
-      row.forEach((cell, colIndex) => { 
+
+    currentGrid.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
         if (!cell.symbol) return; 
         if (cell.symbol.type === "scatter") scatterPositions.push({ row: rowIndex, col: colIndex }); 
         else if (cell.symbol.type === "multiplier") newMultipliers.push(cell.symbol.multiplier || 2); 
         else { 
           if (!symbolCounts[cell.symbol.type]) symbolCounts[cell.symbol.type] = { count: 0, positions: [] }; 
-          symbolCounts[cell.symbol.type].count++; 
-          symbolCounts[cell.symbol.type].positions.push({ row: rowIndex, col: colIndex }); 
-        } 
-      }); 
+          symbolCounts[cell.symbol.type].count++;
+          symbolCounts[cell.symbol.type].positions.push({ row: rowIndex, col: colIndex });
+        }
+      });
     });
-    
+
     if (newMultipliers.length > 0) { 
       SoundManager.play("bomb_explode"); 
       collectedMultipliersRef.current = [...collectedMultipliersRef.current, ...newMultipliers];
@@ -422,10 +438,10 @@ export const SlotGame = () => {
     let cascadeWin = 0; 
     const newBreakdownLines: WinLine[] = [];
     const currentBet = betRef.current;
-    
-    Object.entries(symbolCounts).forEach(([symbolType, data]) => { 
-      if (data.count >= 8) { 
-        hasWins = true; 
+
+    Object.entries(symbolCounts).forEach(([symbolType, data]) => {
+      if (data.count >= 8) {
+        hasWins = true;
         const payout = currentBet * getPayoutMultiplier(symbolType, data.count); 
         cascadeWin += payout; 
         data.positions.forEach(pos => { newGrid[pos.row][pos.col].state = "winning"; }); 
@@ -472,6 +488,10 @@ export const SlotGame = () => {
       // Stop spin sound when win is detected to prevent overlap
       SoundManager.stop("spin_start");
       SoundManager.stop("reel_tumble");
+      
+      // Show win FX animation
+      setShowWinFx(true);
+      setTimeout(() => setShowWinFx(false), 1200); // Hide after animation
       
       setGrid(newGrid); 
       setIsCascading(true); 
@@ -628,6 +648,44 @@ export const SlotGame = () => {
   
   const handleIncreaseBet = () => { const idx = BET_STEPS.indexOf(bet); if (idx < BET_STEPS.length - 1) setBet(BET_STEPS[idx + 1]); };
   const handleDecreaseBet = () => { const idx = BET_STEPS.indexOf(bet); if (idx > 0) setBet(BET_STEPS[idx - 1]); };
+  
+  // Autoplay toggle
+  const toggleAutoplay = useCallback(() => {
+    if (isAutoplay) {
+      // Stop autoplay
+      setIsAutoplay(false);
+      setAutoplaySpinsRemaining(0);
+    } else {
+      // Start autoplay with 50 spins
+      setIsAutoplay(true);
+      setAutoplaySpinsRemaining(50);
+    }
+  }, [isAutoplay]);
+  
+  // Autoplay effect - trigger next spin when current spin finishes
+  useEffect(() => {
+    if (!isAutoplay || autoplaySpinsRemaining <= 0) return;
+    if (isSpinning || isCascading || isProcessingRef.current) return;
+    if (gameMode === "freespins") return; // Don't interfere with free spins
+    if (balance < bet) {
+      // Stop autoplay if insufficient balance
+      setIsAutoplay(false);
+      setAutoplaySpinsRemaining(0);
+      toast.error("Autoplay stopped: Insufficient balance");
+      return;
+    }
+    
+    // Trigger next spin after a short delay
+    const timer = setTimeout(() => {
+      if (isAutoplay && autoplaySpinsRemaining > 0 && !isSpinning && !isCascading) {
+        setAutoplaySpinsRemaining(prev => prev - 1);
+        handleSpin();
+      }
+    }, 800); // 800ms delay between spins
+    
+    return () => clearTimeout(timer);
+  }, [isAutoplay, autoplaySpinsRemaining, isSpinning, isCascading, gameMode, balance, bet, handleSpin]);
+  
   useEffect(() => { return () => { if (cascadeTimeoutRef.current) clearTimeout(cascadeTimeoutRef.current); }; }, []);
 
   const isFreeSpinMode = gameMode === "freespins";
@@ -959,9 +1017,9 @@ export const SlotGame = () => {
 
   // ==================== MOBILE LAYOUT (COMPLETELY REDESIGNED) ====================
   if (isMobile) {
-    return (
+  return (
       <div 
-        style={{ 
+         style={{
           position: "fixed",
           inset: 0,
           width: "100vw", 
@@ -970,9 +1028,9 @@ export const SlotGame = () => {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          backgroundImage: `url(${gameBackground})`, 
-          backgroundSize: "cover", 
-          backgroundPosition: "center",
+           backgroundImage: `url(${gameBackground})`,
+           backgroundSize: "cover",
+           backgroundPosition: "center",
           touchAction: "manipulation",
         }}
       >
@@ -1011,7 +1069,7 @@ export const SlotGame = () => {
           <img 
             src={loadingLogoNew} 
             alt="Logo" 
-            style={{ 
+              style={{
               height: "clamp(40px, 10vw, 55px)", // 20% larger
               filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.9))",
               objectFit: "contain",
@@ -1037,7 +1095,7 @@ export const SlotGame = () => {
                 <div style={{ fontSize: "clamp(16px, 4vw, 22px)", color: "white", fontWeight: 900, textAlign: "center", textShadow: "0 0 10px rgba(74,222,128,0.8)" }}>
                   {freeSpinsRemaining}<span style={{ fontSize: "clamp(10px, 2.5vw, 14px)", color: "#86efac" }}>/{freeSpinsTotal}</span>
                 </div>
-              </motion.div>
+          </motion.div>
             )}
             
             {/* Balance */}
@@ -1045,8 +1103,8 @@ export const SlotGame = () => {
               <div style={{ fontSize: "clamp(8px, 2vw, 10px)", color: "#9ca3af", textTransform: "uppercase", fontWeight: 600 }}>Balance</div>
               <div style={{ fontSize: "clamp(14px, 3.5vw, 18px)", color: "white", fontWeight: 700 }}>₺{balance.toLocaleString()}</div>
             </div>
-          </div>
         </div>
+      </div>
 
         {/* ==================== MAIN GAME AREA ==================== */}
         <div 
@@ -1120,6 +1178,11 @@ export const SlotGame = () => {
             >
               <GameBoard grid={grid} isSpinning={isSpinning} isFreeSpinMode={isFreeSpinMode} />
             </div>
+            
+            {/* Win FX Animations Overlay */}
+            <AnimatePresence>
+              <WinAnimations showWinningFx={showWinFx} showBigWin={showBigWin} />
+            </AnimatePresence>
           </motion.div>
 
           {/* Cascade History Box - Bottom Left */}
@@ -1263,32 +1326,91 @@ export const SlotGame = () => {
             >₺{lastSpinWin.toLocaleString()}</div>
           </div>
 
-          {/* Right: Spin Button (Large) */}
-          <motion.button 
-            whileTap={{ scale: 0.9 }} 
-            onClick={isFreeSpinMode ? triggerFreeSpin : handleSpin} 
-            disabled={isSpinning || isCascading}
-            style={{ 
-              width: "clamp(70px, 18vw, 95px)", 
-              height: "clamp(70px, 18vw, 95px)", 
-              opacity: (isSpinning || isCascading) ? 0.6 : 1,
-              touchAction: "manipulation",
-              flexShrink: 0,
-            }}
-          >
-            <img 
-              src={isSpinning ? btnSpinPressed : btnSpinNormal} 
-              alt="Spin" 
+          {/* Right: Autoplay + Spin Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px, 2vw, 12px)" }}>
+            {/* Autoplay Button */}
+            <motion.button 
+              whileTap={{ scale: 0.9 }} 
+              onClick={toggleAutoplay}
+              disabled={isFreeSpinMode || isSpinning || isCascading}
               style={{ 
-                width: "100%", 
-                height: "100%", 
-                objectFit: "contain", 
-                filter: isFreeSpinMode 
-                  ? "drop-shadow(0 0 20px rgba(74,222,128,0.7))" 
-                  : "drop-shadow(0 6px 12px rgba(0,0,0,0.5))" 
-              }} 
-            />
-          </motion.button>
+                width: "clamp(50px, 12vw, 65px)", 
+                height: "clamp(50px, 12vw, 65px)", 
+                position: "relative",
+                opacity: (isFreeSpinMode || isSpinning || isCascading) ? 0.5 : 1,
+                touchAction: "manipulation",
+                flexShrink: 0,
+              }}
+            >
+              <img 
+                src={btnSquareNormal} 
+                alt="" 
+                style={{ 
+                  position: "absolute", 
+                  inset: 0, 
+                  width: "100%", 
+                  height: "100%", 
+                  objectFit: "contain",
+                  filter: isAutoplay ? "brightness(1.2) hue-rotate(80deg)" : "none",
+                }} 
+              />
+              <div style={{ 
+                position: "absolute", 
+                inset: 0, 
+                display: "flex", 
+                flexDirection: "column",
+                alignItems: "center", 
+                justifyContent: "center",
+              }}>
+                <img 
+                  src={btnTextAuto} 
+                  alt="Auto" 
+                  style={{ 
+                    width: "70%", 
+                    height: "auto", 
+                    objectFit: "contain",
+                  }} 
+                />
+                {isAutoplay && autoplaySpinsRemaining > 0 && (
+                  <span style={{ 
+                    fontSize: "clamp(8px, 2vw, 10px)", 
+                    color: "#4ade80", 
+                    fontWeight: 700,
+                    marginTop: "2px",
+                  }}>
+                    {autoplaySpinsRemaining}
+                  </span>
+                )}
+              </div>
+            </motion.button>
+            
+            {/* Spin Button (Large) */}
+            <motion.button 
+              whileTap={{ scale: 0.9 }} 
+              onClick={isFreeSpinMode ? triggerFreeSpin : handleSpin} 
+              disabled={isSpinning || isCascading}
+              style={{ 
+                width: "clamp(70px, 18vw, 95px)", 
+                height: "clamp(70px, 18vw, 95px)", 
+                opacity: (isSpinning || isCascading) ? 0.6 : 1,
+                touchAction: "manipulation",
+                flexShrink: 0,
+              }}
+            >
+              <img 
+                src={isSpinning ? btnSpinPressed : btnSpinNormal} 
+                alt="Spin" 
+                style={{ 
+                  width: "100%", 
+                  height: "100%", 
+                  objectFit: "contain", 
+                  filter: isFreeSpinMode 
+                    ? "drop-shadow(0 0 20px rgba(74,222,128,0.7))" 
+                    : "drop-shadow(0 6px 12px rgba(0,0,0,0.5))" 
+                }} 
+              />
+            </motion.button>
+          </div>
         </div>
 
         {/* ==================== WIN BREAKDOWN PANEL (Right side, responsive) ==================== */}
@@ -1373,11 +1495,16 @@ export const SlotGame = () => {
 
       {/* CENTER: GAME BOARD */}
       <div className="game-center" style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", paddingBottom: "120px" }}>
-        <motion.div className="game-board rounded-2xl p-1.5" style={{ transformOrigin: "center top", transform: "scale(1.05)" }}
+        <motion.div className="game-board rounded-2xl p-1.5" style={{ transformOrigin: "center top", transform: "scale(1.05)", position: "relative" }}
           animate={{ background: isFreeSpinMode ? "linear-gradient(135deg, #16a34a 0%, #166534 100%)" : "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", boxShadow: isFreeSpinMode ? "0 0 60px rgba(74,222,128,0.5)" : "0 0 60px rgba(126,58,242,0.4)" }}>
           <div className="rounded-xl overflow-hidden">
             <GameBoard grid={grid} isSpinning={isSpinning} isFreeSpinMode={isFreeSpinMode} />
           </div>
+          
+          {/* Win FX Animations Overlay */}
+          <AnimatePresence>
+            <WinAnimations showWinningFx={showWinFx} showBigWin={showBigWin} />
+          </AnimatePresence>
         </motion.div>
       </div>
 
@@ -1424,6 +1551,29 @@ export const SlotGame = () => {
         <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleDecreaseBet} disabled={isFreeSpinMode || isSpinning}
           className="w-11 h-11 rounded-full flex items-center justify-center text-2xl font-bold text-white disabled:opacity-40"
           style={{ background: "linear-gradient(180deg, #6b7280 0%, #4b5563 100%)", boxShadow: "0 3px 0 #374151" }}>−</motion.button>
+        
+        {/* Autoplay Button */}
+        <motion.button 
+          whileHover={{ scale: 1.05 }} 
+          whileTap={{ scale: 0.95 }} 
+          onClick={toggleAutoplay}
+          disabled={isFreeSpinMode || isSpinning || isCascading}
+          className="relative w-14 h-14 disabled:opacity-50"
+        >
+          <img 
+            src={btnSquareNormal} 
+            alt="" 
+            className="w-full h-full object-contain"
+            style={{ filter: isAutoplay ? "brightness(1.2) hue-rotate(80deg)" : "none" }}
+          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <img src={btnTextAuto} alt="Auto" className="w-8 h-auto object-contain" />
+            {isAutoplay && autoplaySpinsRemaining > 0 && (
+              <span className="text-[10px] text-green-400 font-bold">{autoplaySpinsRemaining}</span>
+            )}
+          </div>
+        </motion.button>
+        
         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={isFreeSpinMode ? triggerFreeSpin : handleSpin} disabled={isSpinning || isCascading}
           className="relative w-20 h-20 disabled:opacity-60">
           <img src={isSpinning ? btnSpinPressed : btnSpinNormal} alt="Spin" className="w-full h-full object-contain"
