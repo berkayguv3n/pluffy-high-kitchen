@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Cell } from "../SlotGame";
 import { SymbolDisplay } from "./SymbolDisplay";
+import { SlotFrame } from "../SlotFrame";
+import { SymbolTile } from "../SymbolTile";
 
 interface GameBoardProps {
   grid: Cell[][];
@@ -143,7 +145,7 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
   };
 
   return (
-    <div className="relative">
+    <SlotFrame>
       {/* Game grid - 5 rows x 6 columns */}
       <div 
         className="relative grid grid-cols-6 gap-2 p-3 z-20"
@@ -187,7 +189,33 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
                       : "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
-                  {cell.symbol && <SymbolDisplay cell={cell} />}
+                  {/* Use SymbolTile for symbol display with enhanced visuals */}
+                  {cell.symbol && (
+                    <SymbolTile 
+                      image={`/src/assets/symbol-${cell.symbol.type === 'purple' ? 'chef' : 
+                        cell.symbol.type === 'plum' ? 'brownie' :
+                        cell.symbol.type === 'red' ? 'pizza' :
+                        cell.symbol.type === 'heart' ? 'smoothie' :
+                        cell.symbol.type === 'grape' ? 'cookie' :
+                        cell.symbol.type === 'green' ? 'muffin' :
+                        cell.symbol.type === 'blue' ? 'spatula' :
+                        cell.symbol.type === 'banana' ? 'rolling' :
+                        cell.symbol.type === 'scatter' ? 'oven' :
+                        'chef'}.png`}
+                      alt={cell.symbol.type}
+                    />
+                  )}
+                  
+                  {/* Multiplier badge overlay */}
+                  {cell.symbol?.type === 'multiplier' && cell.symbol.multiplier && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-gradient-to-b from-yellow-400 to-orange-500 rounded-full w-[70%] h-[70%] flex items-center justify-center shadow-lg border-2 border-yellow-300">
+                        <span className="text-white font-black text-lg drop-shadow-md">
+                          x{cell.symbol.multiplier}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Dust/cloud particles when falling or spawning */}
                   {(cell.state === "spawning" || cell.state === "falling") && (
@@ -226,7 +254,7 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
                             y: -40 - Math.random() * 60,
                           }}
                           transition={{ 
-                            duration: 0.3, // Faster smoke
+                            duration: 0.3,
                             ease: "easeOut", 
                             delay: i * 0.02 
                           }}
@@ -240,6 +268,6 @@ export const GameBoard = ({ grid, isSpinning, isFreeSpinMode = false }: GameBoar
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </SlotFrame>
   );
 };
